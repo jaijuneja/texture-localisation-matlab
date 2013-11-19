@@ -1,0 +1,6 @@
+.DS_Store
+/visualindex/*
+/visualindex/*/
+/test_images/*
+/test_images/*/
+!/test_images/adjacency_demo/
