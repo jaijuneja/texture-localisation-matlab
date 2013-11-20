@@ -1,16 +1,48 @@
+% Jai Juneja, www.jaijuneja.com
+% University of Oxford
+% 20/11/2013
+% -------------------------------------------------------------------------
+%
+% Build world model comprised of global features linked to local features
+% in different images. Call world = build_world(model, cor).
+%
+% Inputs:
+%   - model:    Index of images from visualindex. Type 'help
+%               visualindex_build' for more info
+%   - cor:      Correlation structure containing links between different
+%               images (graph representation using an adjacency matrix).
+%               Type 'help get_correlation' for more info
+%
+% Outputs:
+%   - world:    World map structure:
+%                   *   world.feature_map is a 3xn matrix for n global
+%                       features, with the form:
+%                       [global_feat_id; img_id; local_feat_id]
+%                   *   world.num_features = length(world.feature_map)
+%                   *   world.words_global is a 3xn matrix for n global
+%                       features, with the form:
+%                       [global_feat_id; img_id; visual_word]
+%                   *   world.frames_global is a 8xn matrix for n global
+%                       features, with the form:
+%                       [global_feat_id; img_id; x_pos; y_pos; ...
+%                        R(1,1); R(2,1); R(1,2); R(2,2)]
+%                       where R a 2x2 matrix that transforms the unit
+%                       circle to an orientated ellipse
+%
 function world = build_world(model, cor)
 
 % Initialise global map. Add all features in first image to map
 % First image acts as the reference frame
 world.num_features  = length(model.index.words{1});
-world.feature_map   = zeros(3, world.num_features); % Index of image and feature e.g. [1 3] = image 1, feature 3
+world.feature_map   = zeros(3, world.num_features);
 world.words_global  = zeros(3, world.num_features);
 world.frames_global = zeros(8, world.num_features);
 
 world.feature_map   = [ 1:world.num_features
                         ones(1,world.num_features)
                         1:world.num_features    ];
-                    
+
+% At the moment using visual words instead of SIFT descriptors
 world.words_global  = [ 1:world.num_features
                         ones(1,world.num_features)
                         model.index.words{1}    ];
@@ -29,7 +61,6 @@ for i = 1:length(cor.id)
         % IMG 1 MATCHED TO IMG 2 THEN IMG 2 ALSO MATCHED TO IMG 1 LATER ON.
         % HENCE FEATURES CAN BE DOUBLE-COUNTED. DO WE ALLOW FOR THIS?
         matchedImgID = cor.img_matches{i}(j);
-        m = matchedImgID; % Shorthand used in some parts of code
         
         im1_feats = cor.feature_matches{i}{j}(1,:);
         im2_feats = cor.feature_matches{i}{j}(2,:);
@@ -40,94 +71,22 @@ for i = 1:length(cor.id)
         
         for k = 1:length(matched_features)
             im2_feat_toadd = im2_feats(k);
-            fndx = im2_feat_toadd; % Shorthand used in some parts of code
             
-            % If the feature has been matched to one in global map...
+            % If the feature has been matched to one in global map
             if matched_features(k) == 1
                 
                 global_feature_id = world.feature_map(1,matched_ndx(k));
                 
-                % ... Then insert the feature to the correct location in
-                % global map
-                world.feature_map(:, end+1) = ...
-                    [global_feature_id; matchedImgID; im2_feat_toadd];
-                
-                % Update words in same way
-                world.words_global(:, end+1) = ...
-                    [global_feature_id; matchedImgID; ...
-                    model.index.words{matchedImgID}(im2_feat_toadd)];
-                
-                if ~isempty(cor.H_to_ref{matchedImgID})
-                    % Transform local frames to global co-ordinate system
-                    % First obtain matrix transforming unit circle to
-                    % orientated elliptical frame in local co-ordinates
-                    T = [ ...
-                        [model.index.frames{m}(3,fndx); model.index.frames{m}(4,fndx); 0] ...
-                        [model.index.frames{m}(5,fndx); model.index.frames{m}(6,fndx); 0] ...
-                        [model.index.frames{m}(1:2,fndx); 1] ...
-                        ];
-                    % Then pre-multiply this by the transformation to global
-                    % co-ordinates to get the global feature ellipse
-                    global_frame = cor.H_to_ref{matchedImgID} \ T;
-                    global_frame = global_frame / global_frame(3,3);
-
-                    world.frames_global(:, end+1) = ...
-                        [
-                        global_feature_id;
-                        matchedImgID;
-                        global_frame(1:2,3)
-                        global_frame(1,1)
-                        global_frame(2,1)
-                        global_frame(1,2)
-                        global_frame(2,2)                    
-                        ];
-                else
-                    world.frames_global(:, end+1) = ...
-                        [global_feature_id; matchedImgID; zeros(6,1)];
-                end
+                world = update_features(world, cor, model, ...
+                    global_feature_id, matchedImgID, im2_feat_toadd);
                 
             else
                 % Otherwise, create a new feature in global map
                 world.num_features = world.num_features + 1;
                 new_global_id = world.num_features;
 
-                world.feature_map(:, end+1) = ...
-                    [new_global_id; matchedImgID; im2_feat_toadd];
-
-                % Update words in same way
-                world.words_global(:, end+1) = ...
-                    [new_global_id; matchedImgID; ...
-                    model.index.words{matchedImgID}(im2_feat_toadd)];
-
-                if ~isempty(cor.H_to_ref{matchedImgID})
-                    % Transform local frames to global co-ordinate system
-                    % First obtain matrix transforming unit circle to
-                    % orientated elliptical frame in local co-ordinates
-                    T = [ ...
-                        [model.index.frames{m}(3,fndx); model.index.frames{m}(4,fndx); 0] ...
-                        [model.index.frames{m}(5,fndx); model.index.frames{m}(6,fndx); 0] ...
-                        [model.index.frames{m}(1:2,fndx); 1] ...
-                        ];
-                    % Then pre-multiply this by the transformation to global
-                    % co-ordinates to get the global feature ellipse
-                    global_frame = cor.H_to_ref{matchedImgID} \ T;
-                    global_frame = global_frame / global_frame(3,3);
-
-                    world.frames_global(:, end+1) = ...
-                        [
-                        global_feature_id;
-                        matchedImgID;
-                        global_frame(1:2,3)
-                        global_frame(1,1)
-                        global_frame(2,1)
-                        global_frame(1,2)
-                        global_frame(2,2)                    
-                        ];
-                else
-                    world.frames_global(:, end+1) = ...
-                        [global_feature_id; matchedImgID; zeros(6,1)];
-                end
-                
+                world = update_features(world, cor, model, ...
+                    new_global_id, matchedImgID, im2_feat_toadd);                
             end
         end
         
@@ -138,60 +97,19 @@ for i = 1:length(cor.id)
         unmatched_features = feature_vector(unmatched_features);
         numUnmatchedFeats = length(unmatched_features);
         
-        % Add new global feature for each unmatched local feature
+        % Add a new global feature for each unmatched local feature
         new_global_id = world.num_features + 1;
-        world.num_features = new_global_id + numUnmatchedFeats - 1;
+        world.num_features = world.num_features + numUnmatchedFeats;
         new_global_ids = new_global_id : world.num_features;
         
         % Add link to local feature for each unmatched local feature
         for k = 1:numUnmatchedFeats
-            world.feature_map(:, end+1) = ...
-                [new_global_ids(k); matchedImgID; unmatched_features(k)];
-            
-            world.words_global(:, end+1) = ...
-                [new_global_ids(k); matchedImgID; ...
-                model.index.words{matchedImgID}(unmatched_features(k))];
-            
-            if ~isempty(cor.H_to_ref{matchedImgID})
-                fndx = unmatched_features(k);
-
-                % Transform local frames to global co-ordinate system
-                % First obtain matrix transforming unit circle to
-                % orientated elliptical frame in local co-ordinates
-                T = [ ...
-                    [model.index.frames{m}(3,fndx); model.index.frames{m}(4,fndx); 0] ...
-                    [model.index.frames{m}(5,fndx); model.index.frames{m}(6,fndx); 0] ...
-                    [model.index.frames{m}(1:2,fndx); 1] ...
-                    ];
-                % Then pre-multiply this by the transformation to global
-                % co-ordinates to get the global feature ellipse
-                global_frame = cor.H_to_ref{matchedImgID} \ T;
-                global_frame = global_frame / global_frame(3,3);
-
-                world.frames_global(:, end+1) = ...
-                    [
-                    new_global_ids(k);
-                    matchedImgID;
-                    global_frame(1:2,3)
-                    global_frame(1,1)
-                    global_frame(2,1)
-                    global_frame(1,2)
-                    global_frame(2,2)                    
-                    ];
-            else
-                world.frames_global(:, end+1) = ...
-                    [new_global_ids(k); matchedImgID; zeros(6,1)];
-            end
-            
+            world = update_features(world, cor, model, ...
+                new_global_ids(k), matchedImgID, unmatched_features(k));             
         end
         
     end
     
 end
-
-% Need to work out the diff between frames and descriptors
-% Might need to edit visualindex files to include exact descriptors in
-% index
-% At the moment using visual words instead of SIFT descriptors
 
 end

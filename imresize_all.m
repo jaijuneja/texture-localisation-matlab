@@ -1,5 +1,5 @@
-% Resizes all images in a folder to the maximum dimension specified below
-% Images can either be overwritten or saved to a different path
+% Resizes all images in a folder to a maximum dimension specified below.
+% Images can either be overwritten or saved to a different path.
 
 % First get paths to all images in folder
 opts.image_path = 'test_images/outside_tiling/';

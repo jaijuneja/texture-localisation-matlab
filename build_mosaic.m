@@ -1,7 +1,26 @@
-function image_map = build_map(mosaic, im_ref)
+% Jai Juneja, www.jaijuneja.com
+% University of Oxford
+% 20/11/2013
+% -------------------------------------------------------------------------
+% Build an image mosaic by superimposing a set of images. Call
+% [image_map, origin] = build_mosaic(mosaic, im_ref).
+%
+% Inputs:
+%   - mosaic:   Structure containing images ('pieces') transformed relative
+%               to reference image and their origins ('origins') in pixel
+%               co-ordinates
+%   - im_ref:   Reference image
+%
+% Outputs:
+%   - image_map:    Output mosaic image. Empty pixels contain NaN
+%   - origin:       Pixel co-ordinates of image origin (given by bottom
+%                   left corner of reference image in the mosaic)
+%
+function [image_map, origin] = build_mosaic(mosaic, im_ref)
 
-image_map = im2double(im_ref); % mosaic.reference{1};
-origin = [size(im_ref, 1), 1]; % mosaic.origins{1};
+image_map = im2double(im_ref);
+% Origin is bottom left of reference image
+origin = [size(im_ref, 1), 1];
 num_matches = numel(mosaic.pieces);
 
 for i = 1:num_matches
@@ -67,6 +86,7 @@ for i = 1:num_matches
         map_size = size(image_map);
     end
     
+    % Take average of the two images being superimposed
     mass = ~isnan(image_map) + ~isnan(image_map_tmp);
     image_map(isnan(image_map)) = 0 ;
     image_map_tmp(isnan(image_map_tmp)) = 0 ;

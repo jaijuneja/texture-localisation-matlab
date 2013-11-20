@@ -70,8 +70,7 @@ plot_features(world);
 % find images which can be mapped to global frame (excluding reference img)
 im_ref_id = 1;
 ims_mappable = find(cellfun(@(x)(~isempty(x) & ~isequal(x, eye(3))), cor.H_to_ref));
-im_ref_ndx = find([cor.id{:}] == im_ref_id);
-im_ref = imread(index.index.names{im_ref_ndx});
+im_ref = imread(index.index.names{im_ref_id});
 
 num_pieces = length(ims_mappable);
 
@@ -89,12 +88,12 @@ for match_ndx = 1:num_pieces
     [im_mosaic{match_ndx}, ...
         mosaic.pieces{match_ndx}, ...
         mosaic.origins{match_ndx}] ...
-        = get_mosaic(im_ref, im_new, H);
+        = get_mosaic_piece(im_ref, im_new, H);
     
     subplot(1, num_pieces, match_ndx), subimage(im_mosaic{match_ndx})
 end
 
 %% Superimpose all images on a global map
-image_map = build_map(mosaic, im_ref);
+[image_map, origin] = build_mosaic(mosaic, im_ref);
 figure;
 imagesc(image_map); axis off, axis equal
