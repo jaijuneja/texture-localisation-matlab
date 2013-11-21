@@ -1,25 +1,37 @@
+function cor = build_correspondence(model, varargin)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 20/11/2013
 % -------------------------------------------------------------------------
 %
-% Generate a correspondence structure using the index of images. Call 
-% cor = get_correspondence(model, percent_thresh).
+% BUILD_CORRESPONDENCE
+% cor = get_correspondence(model, 'refImg', valRefImg, 'percentThresh',
+% valPercentThresh, 'numThresh', valNumThresh)
+%
+% Generate a correspondence structure using the index of images.
 %
 % Inputs:
 %   - model:    Index of images from visualindex. Type 'help
 %               visualindex_build' for more info
 %
-%   Optional:
-%       - percent_thresh:   The percentage of the maximum matching score
+%   Optional Properties:
+%       - 'refImg':         The ID of the reference image (which will
+%                           coincide with the global co-ordinate frame)
+%       - 'percentThresh':  The percentage of the maximum matching score
 %                           above which a matched image must be to be
 %                           considered a good match (this is a necessary
-%                           but not sufficient condition)
+%                           but not sufficient condition). Set to 0.4 (40%)
+%                           by default
+%       - 'numThresh':      The value above which the matching score must
+%                           be for an image to be considered a good match.
+%                           Set to 20 by default
 %
 % Outputs:
-%   - cor:	Correlation structure containing links between different
+%   - cor:	Correspondence structure containing links between different
 %         	images (graph representation using an adjacency matrix):
 %               *   cor.id is an ordered vector of image ids [1 2 ... n]
+%               *   cor.ref_img is the ID of the image to be used as
+%                   the reference co-ordinate frame
 %               *   cor.img_matches is a 1xn cell array where each index
 %                   cor.img_matches{i} contains the ids of the images
 %                   matched to image i
@@ -43,27 +55,32 @@
 %                   by calling imagesc(cor.adjacency)
 %               *   cor.graph is a biograph representation of the adjacency
 %                   matrix. Use view(cor.graph) to view it
-%
-function cor = get_correspondence(model, percent_thresh)
 
 % Score threshold is a percentage of the maximum score AND greater than a
 % specified value (currently hardcoded and set to 20 below)
-if nargin == 1, percent_thresh = 0.4; end
-abs_thresh = 20;
+opts.percentThresh = 0.4;
+opts.refImg = 1;
+opts.numThresh = 20;
+opts = vl_argparse(opts, varargin);
 
+if opts.percentThresh > 1
+    error('Property "percentThresh" must be less than 1')
+end
+
+% Initialise cor structure
 cor.id = zeros(1, length(model.index.ids));
 cor.img_matches = cell(1, length(model.index.ids));
 cor.feature_matches = cell(1, length(model.index.ids));
 cor.scores = cell(1, length(model.index.ids));
 cor.H = cell(1, length(model.index.ids));
 cor.H_to_ref = cell(1, length(model.index.ids)); % Transformation to reference image
-
 cor.adjacency = zeros(length(model.index.ids));
+cor.ref_img = opts.refImg;
 
 for i = model.index.ids
     [ids, scores, result] = visualindex_query(model, i);
-    score_thresh = scores(2) * percent_thresh; % 60% of best score by default
-    goodmatch = find(scores > score_thresh & scores > abs_thresh ...
+    score_thresh = scores(2) * opts.percentThresh; % 60% of best score by default
+    goodmatch = find(scores > score_thresh & scores > opts.numThresh ...
         & ids ~= result.query);
     cor.id(i) = result.query;
     cor.img_matches{i} = ids(goodmatch);
@@ -86,10 +103,11 @@ cor.graph = biograph(cor.adjacency, node_names);
 % Force symmetry of adjacency matrix
 adjacency_symmetric = cor.adjacency & cor.adjacency';
 % Compute minimum spanning tree to traverse graph
-order = graphtraverse(sparse(adjacency_symmetric), 1, 'Method', 'BFS', 'Directed', false);
+order = graphtraverse(sparse(adjacency_symmetric), opts.refImg, ...
+    'Method', 'BFS', 'Directed', false);
 
-cor.H_to_ref{1} = eye(3); % First image acts as global co-ordinate frame
-previous_node = 1; % Start at image 1 and then traverse minimum spanning tree
+cor.H_to_ref{opts.refImg} = eye(3); % First image acts as global co-ordinate frame
+previous_node = opts.refImg; % Start at image 1 and then traverse minimum spanning tree
 last_node_branched_ndx = 1;
 for i = 2:length(order)
     current_node = order(i);
