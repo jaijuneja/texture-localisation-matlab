@@ -20,7 +20,7 @@ function cor = build_correspondence(model, varargin)
 %       - 'percentThresh':  The percentage of the maximum matching score
 %                           above which a matched image must be to be
 %                           considered a good match (this is a necessary
-%                           but not sufficient condition). Set to 0.4 (40%)
+%                           but not sufficient condition). Set to 0.3 (30%)
 %                           by default
 %       - 'numThresh':      The value above which the matching score must
 %                           be for an image to be considered a good match.
@@ -58,7 +58,7 @@ function cor = build_correspondence(model, varargin)
 
 % Score threshold is a percentage of the maximum score AND greater than a
 % specified value (currently hardcoded and set to 20 below)
-opts.percentThresh = 0.4;
+opts.percentThresh = 0.3;
 opts.refImg = 1;
 opts.numThresh = 20;
 opts = vl_argparse(opts, varargin);
@@ -75,7 +75,6 @@ cor.scores = cell(1, length(model.index.ids));
 cor.H = cell(1, length(model.index.ids));
 cor.H_to_ref = cell(1, length(model.index.ids)); % Transformation to reference image
 cor.adjacency = zeros(length(model.index.ids));
-cor.ref_img = opts.refImg;
 
 for i = model.index.ids
     [ids, scores, result] = visualindex_query(model, i);
@@ -100,30 +99,7 @@ cor.graph = biograph(cor.adjacency, node_names);
 % Use view(graph) to display biograph
 % Use imagesc(adjacency), axis equal to display adjacency matrix
 
-% Force symmetry of adjacency matrix
-adjacency_symmetric = cor.adjacency & cor.adjacency';
-% Compute minimum spanning tree to traverse graph
-order = graphtraverse(sparse(adjacency_symmetric), opts.refImg, ...
-    'Method', 'BFS', 'Directed', false);
-
-cor.H_to_ref{opts.refImg} = eye(3); % First image acts as global co-ordinate frame
-previous_node = opts.refImg; % Start at image 1 and then traverse minimum spanning tree
-last_node_branched_ndx = 1;
-for i = 2:length(order)
-    current_node = order(i);
-    % If current node is not connected to previous node, then update
-    % previous_node
-    if isempty(find(cor.img_matches{current_node} == previous_node))
-        node_branched_ndx = find(ismember(order(last_node_branched_ndx+1:i-1), ...
-            cor.img_matches{current_node}));
-        last_node_branched_ndx = last_node_branched_ndx + node_branched_ndx(1);
-        previous_node = order(last_node_branched_ndx);
-    end
-    H_previous = cor.H_to_ref{previous_node};
-    previous_node_ndx = find(cor.img_matches{current_node} == previous_node);
-    H_current_to_previous = cor.H{current_node}{previous_node_ndx};
-    H = H_current_to_previous * H_previous;
-    cor.H_to_ref{current_node} = H / H(3,3);
-end
+% Set reference image and determine H_to_ref for all images
+cor = set_refimg(cor, opts.refImg);
 
 end

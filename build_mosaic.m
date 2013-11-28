@@ -1,26 +1,33 @@
-function [image_map, origin] = build_mosaic(mosaic, im_ref)
+function [image_map, origin] = build_mosaic(model, mosaic, cor)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 20/11/2013
 % -------------------------------------------------------------------------
 %
 % BUILD_MOSAIC
-% [image_map, origin] = build_mosaic(mosaic, im_ref)
+% [image_map, origin] = build_mosaic(mosaic, im_ref_id)
 %
 % Build an image mosaic by superimposing a set of images.
 %
 % Inputs:
-%   - mosaic:   Structure containing images ('pieces') transformed relative
-%               to reference image and their origins ('origins') in pixel
-%               co-ordinates
-%   - im_ref:   Reference image
+%   - model:    Index of images from visualindex. Type 'help
+%               visualindex_build' for more info
+%   - mosaic:	Structure containing images ('pieces') transformed
+%            	relative to reference image and their origins
+%               ('origins') in pixel co-ordinates
+%   - cor:      Correspondence structure containing links between different
+%               images (graph representation using an adjacency matrix).
+%               Type 'help build_correspondence' for more info
 %
 % Outputs:
 %   - image_map:    Output mosaic image. Empty pixels contain NaN
 %   - origin:       Pixel co-ordinates of image origin (given by bottom
 %                   left corner of reference image in the mosaic)
 
+% Load reference image
+im_ref = imread(model.index.names{cor.ref_img});
 image_map = im2double(im_ref);
+
 % Origin is bottom left of reference image
 origin = [size(im_ref, 1), 1];
 num_matches = numel(mosaic.pieces);
