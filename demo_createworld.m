@@ -1,6 +1,6 @@
 %% Get paths to all images in database and generate index struct
 
-[index, images, path] = build_index('test_images/adjacency_demo/');
+[index, images, path] = build_index('test_images/outside_tiling_lowres/');
 
 %% Find correspondences between images
 

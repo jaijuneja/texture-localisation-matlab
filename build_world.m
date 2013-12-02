@@ -56,7 +56,6 @@ world.frames_global = [ 1:world.num_features
                         ones(1,world.num_features)
                         model.index.frames{1}   ];
 
-                    
 world.features_mappable = true(1, world.num_features);
 
 % Incrementally add features from other images to global map
