@@ -40,13 +40,12 @@ if strcmp(opts.plotStyle, 'randomSample') && opts.numSamples > num_mappable_feat
 end
 
 if strcmp(opts.plotStyle, 'raw')
-    % Determine which features have been matched
-    histo = histc(world.feature_map(1,:), 1:world.num_features);
-    matched = histo > 1;
+    % Determine which features have been matched between multiple images
+    matched = world.features_global(2,:) > 1;
 
-    plot(world.frames_global(3, ~matched & world.features_mappable), ...
-        world.frames_global(4, ~matched & world.features_mappable), 'b+', ... 
-        world.frames_global(3, matched), world.frames_global(4, matched), 'r+', ...
+    plot(world.features_global(3, ~matched & world.features_mappable), ...
+        world.features_global(4, ~matched & world.features_mappable), 'b+', ... 
+        world.features_global(3, matched), world.features_global(4, matched), 'r+', ...
         'LineStyle', 'none');
     set(gca,'YDir','Reverse')
     axis equal
@@ -56,8 +55,8 @@ if strcmp(opts.plotStyle, 'raw')
 elseif strcmp(opts.plotStyle, 'histogram')
 
     % Collect the features that are mappable
-    x_feats = world.frames_global(3,world.features_mappable)';
-    y_feats = world.frames_global(4,world.features_mappable)';
+    x_feats = world.features_global(3,world.features_mappable)';
+    y_feats = world.features_global(4,world.features_mappable)';
 
     % Create evenly spaced bins in the x and y directions
     x_bins = linspace(min(x_feats), max(x_feats), opts.numBins);
@@ -74,14 +73,14 @@ elseif strcmp(opts.plotStyle, 'histogram')
 
 elseif strcmp(opts.plotStyle, 'randomSample')
     % Determine which features have been matched
-    histo = histc(world.feature_map(1,:), 1:world.num_features);
-    matched = histo > 1;
+    matched = world.features_global(2,:) > 1;
+
     % Remove un-mappable points
     matched = matched(world.features_mappable);
     
     % Randomly sample feature points and plot them
     sample_points = randsample(num_mappable_feats, opts.numSamples);
-    feat_points = world.frames_global(3:4, world.features_mappable);
+    feat_points = world.features_global(3:4, world.features_mappable);
     feat_points = feat_points(:, sample_points);
     matched = matched(sample_points);
     

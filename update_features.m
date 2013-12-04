@@ -32,9 +32,6 @@ function world = update_features(world, cor, model, ...
 world.feature_map(:, end+1) = ...
     [fGlobalID; imgID; fLocalID];
 
-% Increment number of features in global map
-world.num_features = world.num_features + 1;
-
 % Also update words in same way
 world.words_global(:, end+1) = ...
     [fGlobalID; imgID; ...
@@ -64,16 +61,61 @@ if ~isempty(cor.H_to_ref{imgID})
             global_frame(2,1)
             global_frame(1,2)
             global_frame(2,2)   ];
-    
-    % The feature's global co-ordinates are known - it can be mapped
-    world.features_mappable(end+1) = true;
-    
 else
     world.frames_global(:, end+1) = ...
         [fGlobalID; imgID; nan(6,1)];
+end
+
+world.frames_local = [  fGlobalID; imgID; ...
+                        model.index.frames{imgID}(:,fLocalID) ];
+                    
+feat_pos = world.frames_global(3:4,end);
+
+% If the feature is new
+if isequal(fGlobalID, world.num_features+1)
+    % Increment number of features in global map
+    world.num_features = world.num_features + 1;
     
-    % The feature's global co-ordinates are unknown - it cannot be mapped
-    world.features_mappable(end+1) = false;
+    % Add the new global feature
+    world.features_global(:,end+1) = [fGlobalID; 1; feat_pos(1); feat_pos(2)];
+    world.feature_indices(1,end+1) = size(world.feature_map, 2);
+    
+    if isnan(feat_pos(1))
+        % The feature's global co-ordinates are unknown - it cannot be mapped
+        world.features_mappable(end+1) = false;
+    else
+        % The feature's global co-ords are known - yay!
+        world.features_mappable(end+1) = true;
+    end
+    
+elseif fGlobalID > world.num_features+1
+    error('You cannot initialise a global feature that has ID greater than world.num_features + 1')
+else
+    % The feature has already been initialised
+    numMatches = world.features_global(2,fGlobalID);
+
+    % Increment the number of local features mapped to the global feature
+    world.features_global(2,fGlobalID) = numMatches + 1;
+    
+    % If the previous position was unknown, we ONLY use the new info to
+    % determine the global position
+    feat_pos_before = world.features_global(3:4,fGlobalID);
+    if isnan(feat_pos_before(1)) && ~isnan(feat_pos(1))
+        world.features_global(3:4,fGlobalID) = feat_pos;
+        % The global feature is now mappable
+        world.features_mappable(fGlobalID) = true;
+        
+    % Else, we take linearly interpolate between the old an new positions
+    % using a weighted average of the two
+    elseif ~isnan(feat_pos_before(1))
+        feat_pos_after = (feat_pos + numMatches * feat_pos_before) / ...
+            (numMatches+1);
+        % Update global feature position estimate
+        world.features_global(3:4,fGlobalID) = feat_pos_after;
+    end
+    
+    % Add latest index to the global feature
+    world.feature_indices(numMatches+1,fGlobalID) = size(world.feature_map, 2);
 end
 
 end

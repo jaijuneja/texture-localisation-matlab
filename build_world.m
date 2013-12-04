@@ -23,7 +23,16 @@ function world = build_world(model, cor)
 %                       features, each of which is mapped to a global
 %                       feature in the form:
 %                       [global_feat_id; img_id; local_feat_id]
-%                   *   world.num_features = length(world.feature_map)
+%                   *   world.features_global is a 3xm matrix for m unique
+%                       global features, containing estimates of each
+%                       feature's global position. It takes the form:
+%                       [global_feat_id; num_matched_feats; x_pos; y_pos]
+%                   *   world.feature_indices is a sparse matrix with m
+%                       columns (for m unique global features). Non-zero
+%                       elements in the mth indicate the indices of local
+%                       features in world.feature_map which map to global
+%                       feature m
+%                   *   world.num_features = length(world.features_global)
 %                   *   world.words_global is a 3xn matrix with the form:
 %                       [global_feat_id; img_id; visual_word]
 %                   *   world.frames_global is a 8xn matrix with the form:
@@ -31,31 +40,42 @@ function world = build_world(model, cor)
 %                        R(1,1); R(2,1); R(1,2); R(2,2)]
 %                       where R a 2x2 matrix that transforms the unit
 %                       circle to an orientated ellipse
-%                   *   world.features_mappable is a 1xn logical array that
+%                   *   world.frames_local is the same as frames_global,
+%                       but frames are defined in the local image co-ords
+%                   *   world.features_mappable is a 1xm logical array that
 %                       is true for features whose global position is knwon
 %                       and false otherwise
 
 % Initialise global map. Add all features in first image to map.
 % First image acts as the reference frame so we can populate feature info
 % from the first image
-world.num_features  = length(model.index.words{1});
-world.feature_map   = zeros(3, world.num_features);
-world.words_global  = zeros(3, world.num_features);
-world.frames_global = zeros(8, world.num_features);
+world.num_features = length(model.index.words{1});
 
-world.feature_map   = [ 1:world.num_features
-                        ones(1,world.num_features)
-                        1:world.num_features    ];
+world.feature_map = [ 1:world.num_features
+                      ones(1,world.num_features)
+                      1:world.num_features    ];
+                    
+world.features_global = [ 1:world.num_features
+                          ones(1,world.num_features)
+                          model.index.frames{1}(1:2,:) ];
+                      
+world.feature_indices = 1:world.num_features;
+
+world.feature_indices = sparse(world.feature_indices);
 
 % At the moment using visual words instead of SIFT descriptors
-world.words_global  = [ 1:world.num_features
-                        ones(1,world.num_features)
-                        model.index.words{1}    ];
+world.words_global = [ 1:world.num_features
+                       ones(1,world.num_features)
+                       model.index.words{1}    ];
                     
 world.frames_global = [ 1:world.num_features
                         ones(1,world.num_features)
                         model.index.frames{1}   ];
 
+world.frames_local = [ 1:world.num_features
+                        ones(1,world.num_features)
+                        model.index.frames{1}   ];
+                    
 world.features_mappable = true(1, world.num_features);
 
 % Incrementally add features from other images to global map
@@ -81,7 +101,6 @@ for i = 1:length(cor.id)
             
             % If the feature has been matched to one in global map
             if matched_features(k) == 1
-                
                 global_feature_id = world.feature_map(1,matched_ndx(k));
                 
                 world = update_features(world, cor, model, ...
@@ -92,7 +111,7 @@ for i = 1:length(cor.id)
                 new_global_id = world.num_features + 1;
 
                 world = update_features(world, cor, model, ...
-                    new_global_id, matchedImgID, im2_feat_toadd);                
+                    new_global_id, matchedImgID, im2_feat_toadd);
             end
         end
         
