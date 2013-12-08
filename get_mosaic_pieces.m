@@ -28,8 +28,7 @@ function mosaic = get_mosaic_pieces(model, cor)
 %                       image is given in pixel co-ordinates ([row col])
 
 % Find images which can be mapped to global frame (excluding reference img)
-ims_mappable = find(cellfun(@(x)(~isempty(x) & ~isequal(x, eye(3))), ...
-    cor.H_to_ref));
+ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
 
 num_pieces = length(ims_mappable);
 

@@ -26,7 +26,9 @@ function [image_map, origin] = build_mosaic(model, mosaic, cor)
 
 % Load reference image
 im_ref = imread(model.index.names{cor.ref_img});
-image_map = im2double(im_ref);
+% Initialise image map
+% image_map = im2double(im_ref);
+image_map = nan(size(im_ref));
 
 % Origin is bottom left of reference image
 origin = [size(im_ref, 1), 1];

@@ -6,7 +6,7 @@ function plot_features(world, varargin)
 %
 % PLOT_FEATURES
 % plot_features(world, 'plotStyle', varPlotStyle, 'numBins', varNumBins,
-% 'numSamples', varNumSamples)
+% 'numSamples', varNumSamples, 'xOffset', valXOffset, 'yOffset', valYOffset)
 %
 % Plots all of the features contained the the world structure in the global
 % co-ordinate frame. Can either plot all individual points, a 2d histogram
@@ -19,18 +19,23 @@ function plot_features(world, varargin)
 %               build_world' for more info
 %
 % 	Optional Properties:
-%       - 'plotStyle':  Can take values 'raw', 'histogram' or
+%       - plotStyle:    Can take values 'raw', 'histogram' or
 %                       'randomSample'. Takes the value 'raw' by default
-%       - 'numBins':    Only applicable for histogram plots. Has a default
+%       - numBins:      Only applicable for histogram plots. Has a default
 %                       value of round(sqrt(world.num_features))
-%       - 'numSamples': Only applicable for sampled feature map plots.
+%       - numSamples:   Only applicable for sampled feature map plots
 %                       Takes a default value of 1e5
+%       - xOffset:      Offset in x-direction; needed for example when
+%                       superimposing plot on an image
+%       - yOffset:      Offset in y-direction
 
 num_mappable_feats = sum(world.features_mappable);
 
 opts.plotStyle = 'raw';
 opts.numBins = round(sqrt(world.num_features));
 opts.numSamples = 1e5;
+opts.xOffset = 0;
+opts.yOffset = 0;
 opts = vl_argparse(opts, varargin) ;
 
 % If the number of samples specified is greater than the number of mappable
@@ -43,10 +48,10 @@ if strcmp(opts.plotStyle, 'raw')
     % Determine which features have been matched between multiple images
     matched = world.features_global(2,:) > 1;
 
-    plot(world.features_global(3, ~matched & world.features_mappable), ...
-        world.features_global(4, ~matched & world.features_mappable), 'b+', ... 
-        world.features_global(3, matched), world.features_global(4, matched), 'r+', ...
-        'LineStyle', 'none');
+    plot(world.features_global(3, ~matched & world.features_mappable) + opts.xOffset, ...
+        world.features_global(4, ~matched & world.features_mappable) + opts.yOffset, 'b+', ... 
+        world.features_global(3, matched) + opts.xOffset, ...
+        world.features_global(4, matched) + opts.yOffset, 'r+');
     set(gca,'YDir','Reverse')
     axis equal
     legend('Unmatched Features', 'Matched Features');
@@ -84,9 +89,10 @@ elseif strcmp(opts.plotStyle, 'randomSample')
     feat_points = feat_points(:, sample_points);
     matched = matched(sample_points);
     
-    plot(feat_points(1, ~matched), feat_points(2, ~matched), 'b+', ... 
-        feat_points(1, matched), feat_points(2, matched), 'r+', ... 
-        'LineStyle', 'none');
+    plot(feat_points(1, ~matched) + opts.xOffset, ...
+        feat_points(2, ~matched) + opts.yOffset, 'b+', ... 
+        feat_points(1, matched) + opts.xOffset, ...
+        feat_points(2, matched) + opts.yOffset, 'r+');
     set(gca,'YDir','Reverse')
     axis equal
     legend('Unmatched Features', 'Matched Features');

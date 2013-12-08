@@ -58,7 +58,7 @@ function cor = build_correspondence(model, varargin)
 
 % Score threshold is a percentage of the maximum score AND greater than a
 % specified value (currently hardcoded and set to 20 below)
-opts.percentThresh = 0.3;
+opts.percentThresh = 0.5;
 opts.refImg = 1;
 opts.numThresh = 20;
 opts = vl_argparse(opts, varargin);
@@ -89,6 +89,18 @@ for i = model.index.ids
     cor.adjacency(i, ids(goodmatch)) = 1;
 end
 
+% Remove edges that are not bi-directional
+[im_ids, match_ids] = find(cor.adjacency .* cor.adjacency' ~= cor.adjacency);
+for i = 1:length(im_ids)
+    match_ndx = (cor.img_matches{im_ids(i)} == match_ids(i));
+    cor.img_matches{im_ids(i)}(match_ndx) = [];
+    cor.feature_matches{im_ids(i)}(match_ndx) = [];
+    cor.scores{im_ids(i)}(match_ndx) = [];
+    cor.H{im_ids(i)}(match_ndx) = [];
+    % Thus we zero out asymmetric terms
+    cor.adjacency(im_ids(i), match_ids(i)) = 0;
+end
+    
 % Construct cell array of image names
 node_names = cell(1, numel(model.index.ids));
 node_names(:) = {'Image '};

@@ -35,13 +35,12 @@ function world = build_world(model, cor)
 %                   *   world.num_features = length(world.features_global)
 %                   *   world.words_global is a 3xn matrix with the form:
 %                       [global_feat_id; img_id; visual_word]
-%                   *   world.frames_global is a 8xn matrix with the form:
+%                   *   world.frames_local is a 8xn matrix with the form:
 %                       [global_feat_id; img_id; x_pos; y_pos; ...
 %                        R(1,1); R(2,1); R(1,2); R(2,2)]
 %                       where R a 2x2 matrix that transforms the unit
-%                       circle to an orientated ellipse
-%                   *   world.frames_local is the same as frames_global,
-%                       but frames are defined in the local image co-ords
+%                       circle to an orientated ellipse. Frames are defined
+%                       in the local co-ordinates of img_id
 %                   *   world.features_mappable is a 1xm logical array that
 %                       is true for features whose global position is knwon
 %                       and false otherwise
@@ -52,12 +51,19 @@ function world = build_world(model, cor)
 world.num_features = length(model.index.words{1});
 
 world.feature_map = [ 1:world.num_features
-                      ones(1,world.num_features)
+                      ones(1,world.num_features) * 1
                       1:world.num_features    ];
+
+frames_glob = transform_frames(model.index.frames{1}, ...
+    cor.H_to_ref{1});
+
+world.frames_local = [ 1:world.num_features
+                        ones(1,world.num_features) * 1
+                        model.index.frames{1}   ];
                     
 world.features_global = [ 1:world.num_features
-                          ones(1,world.num_features)
-                          model.index.frames{1}(1:2,:) ];
+                          ones(1,world.num_features) * 1
+                          frames_glob(1:2,:) ];
                       
 world.feature_indices = 1:world.num_features;
 
@@ -65,28 +71,33 @@ world.feature_indices = sparse(world.feature_indices);
 
 % At the moment using visual words instead of SIFT descriptors
 world.words_global = [ 1:world.num_features
-                       ones(1,world.num_features)
+                       ones(1,world.num_features) * 1
                        model.index.words{1}    ];
-                    
-world.frames_global = [ 1:world.num_features
-                        ones(1,world.num_features)
-                        model.index.frames{1}   ];
-
-world.frames_local = [ 1:world.num_features
-                        ones(1,world.num_features)
-                        model.index.frames{1}   ];
                     
 world.features_mappable = true(1, world.num_features);
 
+% Keep a tab of the IDs of images mapped
+images_mapped = zeros(1, length(cor.img_order));
+images_mapped(1) = 1;
+num_images_mapped = 1;
+
 % Incrementally add features from other images to global map
-for i = 1:length(cor.id)
+for i = cor.img_order
     
     numImgMatches = length(cor.img_matches{i});
     
     for j = 1:numImgMatches
-        % NOTE: CURRENTLY ALLOWS FOR DOUBLE COUNTING OF FEATURES - e.g. IF
-        % IMG 1 MATCHED TO IMG 2 THEN IMG 2 ALSO MATCHED TO IMG 1 LATER ON.
-        % HENCE FEATURES CAN BE DOUBLE-COUNTED. DO WE ALLOW FOR THIS?
+        
+        % If the features from the matched image have already been mapped,
+        % skip current iteration. This step ensures that features are not
+        % double counted - significantly improves speed.
+        if ismember(cor.img_matches{i}(j), images_mapped)
+            continue;
+        end
+        
+        num_images_mapped = num_images_mapped + 1;
+        images_mapped(num_images_mapped) = cor.img_matches{i}(j);
+        
         matchedImgID = cor.img_matches{i}(j);
         
         im1_feats = cor.feature_matches{i}{j}(1,:);

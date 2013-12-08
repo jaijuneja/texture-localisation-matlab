@@ -27,7 +27,7 @@ function [mosaic, mosaic_noref, origin] = stitch_images(im_ref, im_new, H)
 box2 = [1  size(im_new,2) size(im_new,2)  1 ;
         1  1           size(im_new,1)  size(im_new,1) ;
         1  1           1            1 ] ;
-box2_ = H \ box2 ;
+box2_ = H * box2 ;
 box2_(1,:) = box2_(1,:) ./ box2_(3,:) ;
 box2_(2,:) = box2_(2,:) ./ box2_(3,:) ;
 ur = min([1 box2_(1,:)]):max([size(im_ref,2) box2_(1,:)]) ;
@@ -35,6 +35,9 @@ vr = min([1 box2_(2,:)]):max([size(im_ref,1) box2_(2,:)]) ;
 
 [u,v] = meshgrid(ur,vr) ;
 im1_ = vl_imwbackward(im2double(im_ref),u,v) ;
+
+H = inv(H);
+H = H/H(3,3);
 
 z_ = H(3,1) * u + H(3,2) * v + H(3,3) ;
 u_ = (H(1,1) * u + H(1,2) * v + H(1,3)) ./ z_ ;

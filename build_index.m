@@ -1,11 +1,11 @@
-function [model, images, path] = build_index(imgFolder, varargin)
+function [index, images, path] = build_index(imgFolder, varargin)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 20/11/2013
 % -------------------------------------------------------------------------
 % 
 % BUILD INDEX
-% [model, images, path] = build_index(imgFolder, 'imgFormats',
+% [index, images, path] = build_index(imgFolder, 'imgFormats',
 % valImgFormats, 'numWords', valNumWords)
 %
 % Generates index of images using all the images in a given folder. Can 
@@ -21,7 +21,7 @@ function [model, images, path] = build_index(imgFolder, varargin)
 %       - 'numWords':   Number of visual words to use in inverted index
 %
 % Outputs:
-%   - model:    Index of images from visualindex. Type 'help
+%   - index:    Index of images from visualindex. Type 'help
 %               visualindex_build' for more info
 %   - images:   For n images, a 1xn cell array where each element contains
 %               the path to each file
@@ -70,14 +70,14 @@ if ~exist(path.etc, 'dir')
 end
 % If index doesn't already exist, generate it
 if ~exist(path.index, 'file')
-    model = visualindex_build(images, 'opts.numWords', opts.numWords);
+    index = visualindex_build(images, 'numWords', opts.numWords);
     % Add images to index
-    model = visualindex_add(model, images, 1:length(images));
+    index = visualindex_add(index, images, 1:length(images));
     % Save index
     save(path.index, 'index');
 else
-    model = load(path.index);
-    model = model.index;
+    index = load(path.index);
+    index = index.index;
 end
 
 end

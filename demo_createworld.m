@@ -15,6 +15,9 @@ end
 
 view(cor.graph);
 
+%% Change reference image
+cor = set_refimg(cor, 16);
+
 %% Build global map of features
 if ~exist(path.world, 'file')
     % Build correlation structure
@@ -33,3 +36,6 @@ mosaic = get_mosaic_pieces(index, cor);
 %% Superimpose all images on a global map
 [image_map, origin] = build_mosaic(index, mosaic, cor);
 figure; imagesc(image_map); axis off, axis equal
+
+%% Superimpose image mosaic with feature plot
+% superimpose_plots(world, cor, image_map)

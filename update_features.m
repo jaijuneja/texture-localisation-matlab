@@ -39,37 +39,16 @@ world.words_global(:, end+1) = ...
 
 if ~isempty(cor.H_to_ref{imgID})
     % Transform local frames to global co-ordinate system
-    % First obtain matrix transforming unit circle to
-    % orientated elliptical frame in local co-ordinates
-    T = [ ...
-        [model.index.frames{imgID}(3,fLocalID); ...
-        model.index.frames{imgID}(4,fLocalID); 0] ...
-        [model.index.frames{imgID}(5,fLocalID); ...
-        model.index.frames{imgID}(6,fLocalID); 0] ...
-        [model.index.frames{imgID}(1:2,fLocalID); 1] ...
-        ];
-    % Then pre-multiply this by the transformation to global
-    % co-ordinates to get the global feature ellipse
-    global_frame = cor.H_to_ref{imgID} \ T;
-    global_frame = global_frame / global_frame(3,3);
-
-    world.frames_global(:, end+1) = ...
-        [   fGlobalID
-            imgID
-            global_frame(1:2,3)
-            global_frame(1,1)
-            global_frame(2,1)
-            global_frame(1,2)
-            global_frame(2,2)   ];
+    global_frame = transform_frames(model.index.frames{imgID}(:,fLocalID), ...
+        cor.H_to_ref{imgID});
 else
-    world.frames_global(:, end+1) = ...
-        [fGlobalID; imgID; nan(6,1)];
+    global_frame(:, end+1) = nan(6,1);
 end
 
-world.frames_local = [  fGlobalID; imgID; ...
-                        model.index.frames{imgID}(:,fLocalID) ];
+world.frames_local(:, end+1) = [  fGlobalID; imgID; ...
+                               model.index.frames{imgID}(:,fLocalID) ];
                     
-feat_pos = world.frames_global(3:4,end);
+feat_pos = global_frame(1:2);
 
 % If the feature is new
 if isequal(fGlobalID, world.num_features+1)
