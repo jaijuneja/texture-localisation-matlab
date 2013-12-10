@@ -27,21 +27,21 @@ end
 
 %% Real application
 clear
-load('/Users/jai/Documents/MATLAB/4yp/test_images/wall/etc/index.mat')
-load('/Users/jai/Documents/MATLAB/4yp/test_images/wall/etc/cor.mat')
-load('/Users/jai/Documents/MATLAB/4yp/test_images/wall/etc/world.mat')
+load('/Users/jai/Documents/MATLAB/4yp/test_images/balcony_resized/etc/index.mat')
+load('/Users/jai/Documents/MATLAB/4yp/test_images/balcony_resized/etc/cor.mat')
+load('/Users/jai/Documents/MATLAB/4yp/test_images/balcony_resized/etc/world.mat')
 
 %% Make a sample world and cor struct
 % Some basic cases first:
 % e.g. only move global features, only adjust H etc.
 %% Global feature bundle adjustment
-numIters = 5;
+numIters = 1;
 for i = 1:numIters
     [world, cor] = bundle_adjustment(world, cor, 'perspDistPenalty', 1e5, ...
-        'onlyOptimiseH', true);
+        'onlyOptimiseH', false);
 end
 %% Local feature bundle adjustment
-numIters = 5;
+numIters = 1;
 for i = 1:numIters
     [world, cor] = bundle_adjustment_local(world, cor, 'perspDistPenalty', 1e5, ...
         'onlyOptimiseH', false);
@@ -51,12 +51,6 @@ tic
 world = build_world(index, cor);
 toc
 %%
-plot_features(world)
-
-%%
-% figure;
-hold on
+figure;
 % plot_feature_matches(world, cor);
-plot_features(world);
-hold on
-plot_transformations(cor, index);
+plot_everything(world, cor, index, 'showFeatures', false, 'showImgBorders', true)

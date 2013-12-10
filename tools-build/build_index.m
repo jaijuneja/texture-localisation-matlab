@@ -33,7 +33,7 @@ elseif ~isequal(imgFolder(end), '/')
 end
 
 opts.numWords = 1e5;
-opts.imgFormats = {'.jpg', '.png'};
+opts.imgFormats = {'.jpg', '.png', '.JPG', '.PNG'};
 opts = vl_argparse(opts, varargin);
 
 path.images = imgFolder;

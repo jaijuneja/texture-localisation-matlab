@@ -179,7 +179,7 @@ if doEnergyCalcTest
         end
     end
     % Check that naive calculation yields same result
-    % assert(abs((E_current - E_after)/E_current) < 1e-3) ;
+    assert(abs((E_current - E_after)/E_current) < 1e-3) ;
 end
 %%%%%%%%%%%%%%%%%%%%%%% END ENERGY CALCULATION TEST %%%%%%%%%%%%%%%%%%%%%%%
 
@@ -210,5 +210,47 @@ end
 
 fprintf(['Iteration of bundle adjustment completed: \n ' ...
     'Energy before: %d \n Energy after: %d \n'], E_before, E_after);
+
+%%%%%%%%%%%%%%%%% START LINEARIZATION ERROR CALCULATION %%%%%%%%%%%%%%%%%%%
+% Calculate energy using naive approach and compare with result above
+doLinearErrorTest = 1;
+if doLinearErrorTest
+    H_from_ref = cor.H_to_ref;
+    for i = 1:length(ims_matched)
+        img = ims_matched(i);
+        H_from_ref{img} = inv(cor.H_to_ref{img});
+        H_from_ref{img} = H_from_ref{img} / H_from_ref{img}(3,3);
+    end
+    E_after_true = 0;
+    h31_ndx = 5;
+    h32_ndx = 8;
+    for k = 1:length(features_matched)
+        matched_loc_features = indices_matched(:,k);
+        for i = 1:nnz(matched_loc_features)
+            
+            frame_local = world.frames_local(:,matched_loc_features(i));
+            
+            % Determine index of transformation in global optimisation params
+            imgID = frame_local(2);
+            
+            % Get the local optimisation parameters
+            [a, ~] = get_optimisation_params(frame_local(3:4), ...
+                features_matched(3:4,k), H_from_ref{imgID});
+            
+            % Incrementally calculate energy at each iteration
+            E_after_true = E_after_true + double(norm(a))^2;
+            
+            % Add energy due to perspective distortion penalty
+            E_after_true = E_after_true + opts.perspDistPenalty * ...
+                ( (H_from_ref{imgID}(3,1) + delta_new(h31_ndx))^2 + ...
+                (H_from_ref{imgID}(3,2) + delta_new(h32_ndx))^2 );
+        end
+    end
+    lin_error_pc = round(abs((E_after_true - E_after)/E_after_true)*100);
+    % Check that naive calculation yields same result
+    fprintf(['Actual energy after optimisation is %d \n (%d%% error ' ...
+        'from linearised energy prediction) \n'], E_after_true, lin_error_pc);
+end
+%%%%%%%%%%%%%%%%%% END LINEARIZATION ERROR CALCULATION %%%%%%%%%%%%%%%%%%%%
 
 end

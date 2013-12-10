@@ -78,7 +78,7 @@ cor.adjacency = zeros(length(model.index.ids));
 
 for i = model.index.ids
     [ids, scores, result] = visualindex_query(model, i);
-    score_thresh = scores(2) * opts.percentThresh; % 60% of best score by default
+    score_thresh = scores(2) * opts.percentThresh; % of best match score
     goodmatch = find(scores > score_thresh & scores > opts.numThresh ...
         & ids ~= result.query);
     cor.id(i) = result.query;

@@ -6,7 +6,7 @@ function resize_images(imgFolder, varargin)
 %
 % RESIZE_IMAGES
 % resize_images(imgFolder, 'maxDimension', valMaxDimension, 'fileSuffix',
-% valFileSuffix, 'saveFolder', valSavePath)
+% valFileSuffix, 'saveFolder', valSaveFolder)
 %
 % Resizes all images in a folder to a maximum specified dimension. Images
 % are saved to a new folder by default. To overwrite the old images set the
@@ -24,13 +24,14 @@ function resize_images(imgFolder, varargin)
 %       - 'saveFolder': 	String containing the path to the folder where
 %                           images are to be saved. Set equal to imgFolder
 %                           to save in original folder or to overwrite
-%                           files. By default valSavePath != imgFolder
+%                           files. By default valSavePath = imgFolder +
+%                           '_resized'
 
 % Some initial error checking of input arguments
 if ~ischar(imgFolder) || ~isdir(imgFolder)
     error('Input "imgFolder" must be a string containing a path')
-elseif ~isequal(imgFolder(end), '/')
-    imgFolder = strcat(imgFolder, '/'); % Path needs to end with /
+elseif ~isequal(imgFolder(end), filesep)
+    imgFolder(end+1) = filesep; % Path needs to end with /
 end
 
 % Default property values
@@ -46,6 +47,8 @@ if ~ischar(opts.fileSuffix)
 end
 if ~ischar(opts.saveFolder)
     error('Property "saveFolder" must be a string')
+elseif ~isequal(opts.saveFolder(end), filesep)
+    opts.saveFolder(end+1) = filesep; % Path needs to end with /
 end
 
 % Obtain listing of all files in image folder

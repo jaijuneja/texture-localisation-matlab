@@ -48,21 +48,21 @@ function world = build_world(model, cor)
 % Initialise global map. Add all features in first image to map.
 % First image acts as the reference frame so we can populate feature info
 % from the first image
-world.num_features = length(model.index.words{1});
+world.num_features = length(model.index.words{cor.ref_img});
 
 world.feature_map = [ 1:world.num_features
-                      ones(1,world.num_features) * 1
+                      ones(1,world.num_features) * cor.ref_img
                       1:world.num_features    ];
 
-frames_glob = transform_frames(model.index.frames{1}, ...
-    cor.H_to_ref{1});
+frames_glob = transform_frames(model.index.frames{cor.ref_img}, ...
+    cor.H_to_ref{cor.ref_img});
 
 world.frames_local = [ 1:world.num_features
-                        ones(1,world.num_features) * 1
-                        model.index.frames{1}   ];
+                        ones(1,world.num_features) * cor.ref_img
+                        model.index.frames{cor.ref_img}   ];
                     
 world.features_global = [ 1:world.num_features
-                          ones(1,world.num_features) * 1
+                          ones(1,world.num_features)
                           frames_glob(1:2,:) ];
                       
 world.feature_indices = 1:world.num_features;
@@ -71,14 +71,14 @@ world.feature_indices = sparse(world.feature_indices);
 
 % At the moment using visual words instead of SIFT descriptors
 world.words_global = [ 1:world.num_features
-                       ones(1,world.num_features) * 1
-                       model.index.words{1}    ];
+                       ones(1,world.num_features) * cor.ref_img
+                       model.index.words{cor.ref_img}    ];
                     
 world.features_mappable = true(1, world.num_features);
 
 % Keep a tab of the IDs of images mapped
 images_mapped = zeros(1, length(cor.img_order));
-images_mapped(1) = 1;
+images_mapped(1) = cor.ref_img;
 num_images_mapped = 1;
 
 % Incrementally add features from other images to global map

@@ -29,7 +29,7 @@ function offsets = plot_transformations(cor, index, varargin)
 %
 % Outputs:
 %   - offset:   [xOffset; yOffset] values needed for superimposing the plot
-%               on an image (see superimpose_plots for an example)
+%               on an image (see plot_everything for an example)
 
 opts.LineColour = 'black';
 opts.plotOnImage = false;
@@ -39,17 +39,17 @@ opts = vl_argparse(opts, varargin);
 ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
 vertices = cell(1,length(ims_mappable));
 
-xmin = 1; ymin = 1;
 for i = 1:length(ims_mappable)
     img = ims_mappable(i);
     im_info = imfinfo(index.index.names{img});
     imsize = [im_info.Width; im_info.Height];
-    [vertices{i}, xmin_tmp, ymin_tmp] = ...
-        transform_rect(cor.H_to_ref{img}, imsize);
-    % Update minimum values
-    if xmin_tmp < xmin, xmin = xmin_tmp; end
-    if ymin_tmp < ymin, ymin = ymin_tmp; end
+    vertices{i} = transform_rect(cor.H_to_ref{img}, imsize);
 end
+
+% Get offset values
+vertices_mat = cell2mat(vertices);
+xmin = min(vertices_mat(1,:));
+ymin = min(vertices_mat(2,:));
 
 if xmin > 0, xmin = 0; end
 if ymin > 0, ymin = 0; end
@@ -80,20 +80,19 @@ end
 set(gca, 'YDir', 'reverse')
 axis equal, hold off
 
-function [new_vertices, xmin, ymin] = ...
-    transform_rect(H, imsize)
+function new_vertices = transform_rect(H, imsize)
+% Transforms the corners of a rectangle with dimensions imsize(2) x
+% imsize(1) by the transformation matrix H. Returns the new vertices.
 
 H_top = H(1:2,:);
 H_bot = H(3,:);
 
-% Vertices of image in homogeneous co-ordinates
+% Vertices of image in homogeneous co-ordinates (note that 5th vertex is
+% same as first, so that when plotting them they form a closed polygon)
 im_vertices =   [  0    imsize(1)   imsize(1)           0   0
                    0            0   imsize(2)   imsize(2)   0
                    1            1           1           1   1   ];
 
-% Transformed image
+% Vertices of transformed image
 new_vertices = (H_top * im_vertices) ./ ...
     [H_bot * im_vertices; H_bot * im_vertices];
-
-xmin = min(new_vertices(1,:));
-ymin = min(new_vertices(2,:));

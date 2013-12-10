@@ -6,7 +6,8 @@ function plot_everything(world, cor, model, varargin)
 %
 % PLOT_EVERYTHING
 % plot_everything(world, cor, model, 'matchesOnly', valMatchesOnly,
-% 'showMosaic', valShowMosaic, 'showImgBorders', valShowImgBorders)
+% 'showFeatures', valShowFeatures, 'showMosaic', valShowMosaic,
+% 'showImgBorders', valShowImgBorders)
 %
 % Superimposes plots of the image mosaic, features and image edge lines.
 % Various optional input properties allow you to select which of these
@@ -22,9 +23,16 @@ function plot_everything(world, cor, model, varargin)
 %               visualindex_build' for more info
 %
 %   Optional Properties:
-%       - matchesOnly:      Set to true if you only want to show features
-%                           that are matched between multiple images; false
+%       - showFeatures:     Set to false if you don't want to display
+%                           features; true by default
+%       - matchesOnly:      Only applies when showFeatures is set to true.
+%                           Set to true if you only want to show features
+%                           that are matched between multiple images. False
 %                           by default
+%       - globalFeatsOnly:  Only applies when showFeatures and matchesOnly
+%                           are both set to true. When true, only global
+%                           features are displayed (local matches are
+%                           hidden). False by default
 %       - showMosaic:       Set to false if you don't want to display the
 %                           image mosaic under the features; true by
 %                           default
@@ -32,9 +40,12 @@ function plot_everything(world, cor, model, varargin)
 %                           along the borders of images; true by default
 
 opts.matchesOnly = false;
+opts.globalFeatsOnly = false;
+opts.showFeatures = true;
 opts.showMosaic = true;
 opts.showImgBorders = true;
 opts = vl_argparse(opts, varargin);
+valLineColour = 'black';
 
 % Get offset parameters
 offsets = plot_transformations(cor, model, 'plotOnImage', true, ...
@@ -45,26 +56,28 @@ xOffset = offsets(1); yOffset = offsets(2);
 if opts.showMosaic
     mosaic = get_mosaic_pieces(model, cor);
     image_map = build_mosaic(model, mosaic, cor);
-    imagesc(image_map); 
+    imagesc(image_map);
+    valLineColour = 'g';
     hold on
 end
 
 % Plot features
-if opts.matchesOnly
-    plot_feature_matches(world, cor, 'xOffset', xOffset, 'yOffset', yOffset);
-else
+if opts.matchesOnly && opts.showFeatures
+    plot_feature_matches(world, cor, 'globalFeatsOnly', opts.globalFeatsOnly, ...
+        'xOffset', xOffset, 'yOffset', yOffset);
+    hold on
+elseif opts.showFeatures
     plot_features(world, 'xOffset', xOffset, 'yOffset', yOffset);
+    hold on
 end
-
-hold on
 
 % Plot image edges lines
 if opts.showImgBorders
-    plot_transformations(cor, model, 'plotOnImage', true, 'LineColour', 'g');
+    plot_transformations(cor, model, 'plotOnImage', true, 'LineColour', valLineColour);
 end
 
 % Turn of axis if plotting mosaic
 if opts.showMosaic, axis off, end
-axis equal
+axis equal, hold off
 
 end

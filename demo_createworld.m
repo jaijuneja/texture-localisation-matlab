@@ -1,12 +1,12 @@
 %% Get paths to all images in database and generate index struct
 
-[index, images, path] = build_index('test_images/adjacency_demo/');
+[index, images, path] = build_index('test_images/balcony_resized/', 'numWords', 2e4);
 
 %% Find correspondences between images
 
 if ~exist(path.cor, 'file')
     % Build correlation structure
-    cor = build_correspondence(index, 'refImg', 1);
+    cor = build_correspondence(index, 'percentThresh', 0.5);
     % Save it
     save(path.cor, 'cor');
 else
@@ -16,7 +16,7 @@ end
 view(cor.graph);
 
 %% Change reference image
-cor = set_refimg(cor, 16);
+cor = set_refimg(cor, 10);
 
 %% Build global map of features
 if ~exist(path.world, 'file')
@@ -38,4 +38,5 @@ mosaic = get_mosaic_pieces(index, cor);
 figure; imagesc(image_map); axis off, axis equal
 
 %% Superimpose image mosaic with feature plot
-% superimpose_plots(world, cor, image_map)
+figure;
+plot_everything(world, cor, index, 'matchesOnly', false, 'showMosaic', true)
