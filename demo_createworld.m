@@ -15,6 +15,9 @@ end
 
 view(cor.graph);
 
+%% Browse correspondence structure
+plot_images(index, cor);
+
 %% Change reference image
 cor = set_refimg(cor, 10);
 
@@ -39,4 +42,4 @@ figure; imagesc(image_map); axis off, axis equal
 
 %% Superimpose image mosaic with feature plot
 figure;
-plot_everything(world, cor, index, 'matchesOnly', false, 'showMosaic', true)
+plot_everything(world, cor, index, 'matchesOnly', true, 'showMosaic', true)

@@ -1,11 +1,11 @@
-function offsets = plot_transformations(cor, index, varargin)
+function offsets = plot_transformations(cor, model, varargin)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 08/12/2013
 % -------------------------------------------------------------------------
 %
 % PLOT_TRANSFORMATIONS
-% plot_transformations(cor, index, varargin, 'LineColour', valLineColour,
+% plot_transformations(cor, model, varargin, 'LineColour', valLineColour,
 % 'plotOnImage', valPlotOnImage)
 %
 % Plots the borders of all images in the global map. By using the 'hold on'
@@ -14,8 +14,8 @@ function offsets = plot_transformations(cor, index, varargin)
 % function plot_everything.
 %
 % Inputs:
-%   - world:    World structure containing global features. Type 'help 
-%               build_world' for more info
+%   - model:    Index of images from visualindex. Type 'help
+%               visualindex_build' for more info
 %   - cor:      Correspondence structure containing links between different
 %               images (graph representation using an adjacency matrix).
 %               Type 'help build_correspondence' for more info
@@ -41,7 +41,7 @@ vertices = cell(1,length(ims_mappable));
 
 for i = 1:length(ims_mappable)
     img = ims_mappable(i);
-    im_info = imfinfo(index.index.names{img});
+    im_info = imfinfo(model.index.names{img});
     imsize = [im_info.Width; im_info.Height];
     vertices{i} = transform_rect(cor.H_to_ref{img}, imsize);
 end

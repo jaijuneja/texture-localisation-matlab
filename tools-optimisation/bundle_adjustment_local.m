@@ -2,6 +2,8 @@ function [world, cor] = bundle_adjustment_local(world, cor, varargin)
 
 opts.perspDistPenalty = 0;
 opts.onlyOptimiseH = false;
+opts.dH_thresh = 0.1;
+opts.df_thresh = 1;
 opts = vl_argparse(opts, varargin);
 
 % Note: we only optimise features that have been matched between multiple
@@ -16,7 +18,6 @@ indices_matched = world.feature_indices(:,matched);
 % Collect relevant views for optimisation
 ims_matched = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
 num_views = length(ims_matched);
-num_feats_glob = sum(matched);
 num_feats_loc = nnz(indices_matched);
 
 % Build a temporary cell array which contains the inverse values of
@@ -57,6 +58,7 @@ for k = 1:length(features_matched)
         
         % Calculate parameters for quadprog
         % Recall the formula:
+        % E(f, H) = ||?(f, H)||^2
         % Energy = a'*a + 2*a'*b'*delta + delta'*b*b'*delta
         % Quadprog takes form quadprog(G, h) for 1/2*x'*G*x + h'*x
 
@@ -88,7 +90,7 @@ for k = 1:length(features_matched)
         % Energy is increased if h31 and h32 deviate from zero
         if ~isequal(opts.perspDistPenalty, 0)
             [a31_penalty, h31_penalty, a32_penalty, h32_penalty] = ...
-                get_penalty_params(H_from_ref{imgID}, opts.perspDistPenalty);
+                constrain_perspective(H_from_ref{imgID}, opts.perspDistPenalty);
             h(img_ndx+2) = h(img_ndx+2) + h31_penalty;
             h(img_ndx+5) = h(img_ndx+5) + h32_penalty;
             G31_penalty = opts.perspDistPenalty;
@@ -107,12 +109,14 @@ E_before = A' * A;
 
 G = 2 * G;
 
-% We only want small changes in h13 and h23, so set this as a constraint
-persp_dist_thresh = 0.01;
-h31_ndxs = num_feats_loc*2+3 : 8 : num_feats_loc*2 + num_views*8;
-h32_ndxs = num_feats_loc*2+6 : 8 : num_feats_loc*2 + num_views*8;
+% Impose constraint that delta is small
+H_ndxs = num_feats_loc*2+1:num_feats_loc*2 + num_views*8;
 delta_upper = inf(size(h));
-delta_upper([h31_ndxs h32_ndxs]) = persp_dist_thresh;
+delta_upper(H_ndxs) = opts.dH_thresh;
+
+F_ndxs = 1:num_feats_loc*2;
+delta_upper(F_ndxs) = opts.df_thresh;
+
 delta_lower = - delta_upper;
 
 % If we're only optimising transformations (H), then remove all feature
@@ -128,6 +132,7 @@ if opts.onlyOptimiseH
 end
 
 delta = quadprog(G, h, [], [], [], [], delta_lower, delta_upper);
+% delta = fmincon(FUN(delta),X0,A,B,Aeq,Beq,LB,UB,NONLCON)
 
 % delta(num_feats_loc * 2 + 1:end) = 0; % Ignore transformations (for testing purposes)
 % delta(1:num_feats_loc * 2) = 0; % Ignore features (for testing purposes)
@@ -222,8 +227,6 @@ if doLinearErrorTest
         H_from_ref{img} = H_from_ref{img} / H_from_ref{img}(3,3);
     end
     E_after_true = 0;
-    h31_ndx = 5;
-    h32_ndx = 8;
     for k = 1:length(features_matched)
         matched_loc_features = indices_matched(:,k);
         for i = 1:nnz(matched_loc_features)
@@ -240,10 +243,8 @@ if doLinearErrorTest
             % Incrementally calculate energy at each iteration
             E_after_true = E_after_true + double(norm(a))^2;
             
-            % Add energy due to perspective distortion penalty
             E_after_true = E_after_true + opts.perspDistPenalty * ...
-                ( (H_from_ref{imgID}(3,1) + delta_new(h31_ndx))^2 + ...
-                (H_from_ref{imgID}(3,2) + delta_new(h32_ndx))^2 );
+                ( H_from_ref{imgID}(3,1)^2 + H_from_ref{imgID}(3,2)^2 );
         end
     end
     lin_error_pc = round(abs((E_after_true - E_after)/E_after_true)*100);

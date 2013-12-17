@@ -1,4 +1,4 @@
-function [a31, b31, a32, b32] = get_penalty_params(H, penalty)
+function [a31, b31, a32, b32] = constrain_perspective(H, penalty)
 
 % penalty*(h31 + dh31)^2 = penalty * (h31^2 + 2h31*dh31 + dh31^2)
 
