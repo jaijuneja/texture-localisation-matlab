@@ -4,3 +4,4 @@
 /test_images/*
 /test_images/*/
 !/test_images/adjacency_demo/
+/figures/big-files/
