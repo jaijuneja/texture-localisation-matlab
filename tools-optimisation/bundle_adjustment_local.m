@@ -4,6 +4,7 @@ opts.perspDistPenalty = 0;
 opts.onlyOptimiseH = false;
 opts.dH_thresh = 0.1;
 opts.df_thresh = 1;
+opts.imsToInclude = [];
 opts = vl_argparse(opts, varargin);
 
 % Note: we only optimise features that have been matched between multiple
@@ -19,6 +20,24 @@ indices_matched = world.feature_indices(:,matched);
 ims_matched = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
 num_views = length(ims_matched);
 num_feats_loc = nnz(indices_matched);
+
+% NEW STUFF
+if ~isempty(opts.imsToInclude)
+    for i = 1:length(features_matched)
+    matched_loc_features = indices_matched(:,i);
+        for j = 1:nnz(matched_loc_features)
+            imgid = world.frames_local(2, matched_loc_features(j));
+            if ~ismember(imgid, opts.imsToInclude)
+                indices_matched(j,i) = 0;
+            end
+        end
+    end
+    
+    ims_matched = opts.imsToInclude;
+    num_views = length(opts.imsToInclude);
+    num_feats_loc = nnz(indices_matched);
+end
+%%%%
 
 % Build a temporary cell array which contains the inverse values of
 % cor.H_to_ref. We will perturb the inverted values during the optimisation
@@ -44,7 +63,8 @@ feat_counter = 0;
 % Cycle through each global feature to build the optimisation parameters
 for k = 1:length(features_matched)
     matched_loc_features = indices_matched(:,k);
-    for i = 1:nnz(matched_loc_features)
+    matched_loc_features = matched_loc_features(matched_loc_features ~= 0);
+    for i = 1:length(matched_loc_features)
         feat_counter = feat_counter + 1;
         % Do a test here to check that the global features match
         frame_local = world.frames_local(:,matched_loc_features(i));
@@ -141,7 +161,7 @@ E_after = A'*A + h'*delta + 0.5*delta'*G*delta;
 
 %%%%%%%%%%%%%%%%%%%%% START ENERGY CALCULATION TEST %%%%%%%%%%%%%%%%%%%%%%%
 % Calculate energy using naive approach and compare with result above
-doEnergyCalcTest = 1;
+doEnergyCalcTest = 0;
 if doEnergyCalcTest
     E_current = 0;
     h31_ndx = 5;
@@ -149,7 +169,8 @@ if doEnergyCalcTest
     feat_counter = 0;
     for k = 1:length(features_matched)
         matched_loc_features = indices_matched(:,k);
-        for i = 1:nnz(matched_loc_features)
+        matched_loc_features = matched_loc_features(matched_loc_features ~= 0);
+        for i = 1:length(matched_loc_features)
             feat_counter = feat_counter + 1;
             fLoc_ndx = feat_counter * 2 - 1;
             
@@ -218,7 +239,7 @@ fprintf(['Iteration of bundle adjustment completed: \n ' ...
 
 %%%%%%%%%%%%%%%%% START LINEARIZATION ERROR CALCULATION %%%%%%%%%%%%%%%%%%%
 % Calculate energy using naive approach and compare with result above
-doLinearErrorTest = 1;
+doLinearErrorTest = 0;
 if doLinearErrorTest
     H_from_ref = cor.H_to_ref;
     for i = 1:length(ims_matched)
@@ -229,7 +250,8 @@ if doLinearErrorTest
     E_after_true = 0;
     for k = 1:length(features_matched)
         matched_loc_features = indices_matched(:,k);
-        for i = 1:nnz(matched_loc_features)
+        matched_loc_features = matched_loc_features(matched_loc_features ~= 0);
+        for i = 1:length(matched_loc_features)
             
             frame_local = world.frames_local(:,matched_loc_features(i));
             

@@ -1,4 +1,4 @@
-function [cor, H] = fix_persp_distortion(model, cor)
+function [cor, H] = fix_persp_distortion(model, cor, varargin)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 17/12/2013
@@ -42,6 +42,12 @@ end
 plot([x x(1)], [y y(1)], 'r', 'LineWidth', 2)
 drawnow;
 
+% Convert rectangle from mosaic co-ordinates to world co-ords (mosaic is in
+% positive co-ordinates only, whereas world includes negative values)
+offsets_bef = plot_transformations(model, cor, 'dontPlot', true);
+x = x - offsets_bef(1);
+y = y - offsets_bef(2);
+
 % Compute rectangle that fits around the selected points
 xy_rec = rect_fit(x, y);
 
@@ -63,7 +69,6 @@ H = reshape(h, 3, 3)';
 
 % Correct global image transformations for perspective distortion
 mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
-offsets_bef = plot_transformations(cor, model, 'dontPlot', true);
 for i = mappable
     cor.H_to_ref{i} = H \ cor.H_to_ref{i};
     cor.H_to_ref{i} = cor.H_to_ref{i} * cor.H_to_ref{i}(3,3);
@@ -75,19 +80,19 @@ new_image_map = build_mosaic(model, newmosaic, cor);
 figure; imagesc(new_image_map);
 hold on, axis equal, axis tight
 
-% Correct rectangle co-ordinates for mosaic offset
-x = x - offsets_bef(1);
-y = y - offsets_bef(2);
 xy_rec = H \ [x; y; ones(1, 4)];
 xy_rec(1:2, :) = xy_rec(1:2, :) ./ [xy_rec(3, :); xy_rec(3, :)];
+xy_rec = xy_rec(1:2, :);
 
-offsets_aft = plot_transformations(cor, model, 'dontPlot', true);
+offsets_aft = plot_transformations(model, cor, 'dontPlot', true);
 xy_rec(1, :) = xy_rec(1, :) + offsets_aft(1);
 xy_rec(2, :) = xy_rec(2, :) + offsets_aft(2);
 
 % Plot rectangle on new mosaic
 plot([xy_rec(1,:) xy_rec(1,1)], [xy_rec(2,:) xy_rec(2,1)], 'r', 'LineWidth', 2)
 hold off
+
+% test_result(xy_rec);
 
 H = inv(H);
 
@@ -143,3 +148,22 @@ if index > numPoints
 elseif index <= 0
     index = numPoints + index;
 end
+
+function dot_prod = test_result(xy_rec)
+% Check to make sure that the output is in rectilinear co-ordinates (i.e.
+% dot product of edges is zero).
+pts = length(xy_rec);
+line_seg = zeros(2, pts); % Line vectors
+for i = 1:pts
+    j = ndx(i+1, pts);
+    line_seg(:, i) = [xy_rec(1,j) - xy_rec(1,i); xy_rec(2,j) - xy_rec(2,i)];
+end
+
+dot_prod = zeros(1, pts);
+for i = 1:pts
+    j = ndx(i+1, pts);
+    dot_prod(i) = dot(line_seg(:, i), line_seg(:,j));
+end
+dot_sum = sum(abs(dot_prod));
+
+assert(dot_sum < 1e-5);

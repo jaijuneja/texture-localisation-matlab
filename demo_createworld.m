@@ -1,6 +1,6 @@
 %% Get paths to all images in database and generate index struct
 
-[index, images, path] = build_index('test_images/balcony_resized/', 'numWords', 2e4);
+[index, images, path] = build_index('test_images/room/', 'numWords', 5e3);
 
 %% Find correspondences between images
 
@@ -19,8 +19,8 @@ view(cor.graph);
 plot_images(index, cor);
 
 %% Change reference image
-cor = set_refimg(cor, 10);
-
+cor = set_refimg(cor, 5);
+save(path.cor, 'cor');
 %% Build global map of features
 if ~exist(path.world, 'file')
     % Build correlation structure
@@ -42,4 +42,7 @@ figure; imagesc(image_map); axis off, axis equal
 
 %% Superimpose image mosaic with feature plot
 figure;
-plot_everything(world, cor, index, 'matchesOnly', true, 'showMosaic', true)
+plot_everything(index, world, cor, 'matchesOnly', true, 'showMosaic', true)
+
+%% Correct image for perspective distortion
+cor = fix_persp_distortion(index, cor);

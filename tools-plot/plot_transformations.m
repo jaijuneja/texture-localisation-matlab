@@ -1,11 +1,11 @@
-function offsets = plot_transformations(cor, model, varargin)
+function offsets = plot_transformations(model, cor, varargin)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 08/12/2013
 % -------------------------------------------------------------------------
 %
 % PLOT_TRANSFORMATIONS
-% plot_transformations(cor, model, varargin, 'LineColour', valLineColour,
+% plot_transformations(model, cor, varargin, 'LineColour', valLineColour,
 % 'plotOnImage', valPlotOnImage)
 %
 % Plots the borders of all images in the global map. By using the 'hold on'
@@ -26,6 +26,8 @@ function offsets = plot_transformations(cor, model, varargin)
 %                       on an image mosaic. Set to false by default
 %       - dontPlot:     Set to true when you don't want to plot the result,
 %                       but just need the offset values
+%       - addDelay:     When set to true, adds a 1 second delay between
+%                       plotting each image
 %
 % Outputs:
 %   - offset:   [xOffset; yOffset] values needed for superimposing the plot
@@ -34,6 +36,7 @@ function offsets = plot_transformations(cor, model, varargin)
 opts.LineColour = 'black';
 opts.plotOnImage = false;
 opts.dontPlot = false;
+opts.addDelay = false;
 opts = vl_argparse(opts, varargin);
 
 ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
@@ -73,7 +76,9 @@ for i = 1:length(ims_mappable)
     plot(vertices{i}(1,:), vertices{i}(2,:), opts.LineColour, ...
         'LineWidth', 1.5);
     hold on
-    % pause(2); Add pause to visually check which image is which
+    if opts.addDelay
+        pause(1); % Add pause to visually check which image is which
+    end
 end
 
 % Reverse y-axis so that plot is aligned with image mosaic

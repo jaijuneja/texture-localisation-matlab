@@ -1,11 +1,11 @@
-function plot_everything(world, cor, model, varargin)
+function plot_everything(model, world, cor, varargin)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 08/12/2013
 % -------------------------------------------------------------------------
 %
 % PLOT_EVERYTHING
-% plot_everything(world, cor, model, 'matchesOnly', valMatchesOnly,
+% plot_everything(model, world, cor, 'matchesOnly', valMatchesOnly,
 % 'showFeatures', valShowFeatures, 'showMosaic', valShowMosaic,
 % 'showImgBorders', valShowImgBorders)
 %
@@ -14,13 +14,13 @@ function plot_everything(world, cor, model, varargin)
 % plots to include.
 %
 % Inputs:
+%   - model:    Index of images from visualindex. Type 'help
+%               visualindex_build' for more info
 %   - world:    World structure containing global features. Type 'help 
 %               build_world' for more info
 %   - cor:      Correspondence structure containing links between different
 %               images (graph representation using an adjacency matrix).
 %               Type 'help build_correspondence' for more info
-%   - model:    Index of images from visualindex. Type 'help
-%               visualindex_build' for more info
 %
 %   Optional Properties:
 %       - showFeatures:     Set to false if you don't want to display
@@ -48,7 +48,7 @@ opts = vl_argparse(opts, varargin);
 valLineColour = 'black';
 
 % Get offset parameters
-offsets = plot_transformations(cor, model, 'plotOnImage', true, ...
+offsets = plot_transformations(model, cor, 'plotOnImage', true, ...
     'dontPlot', true);
 xOffset = offsets(1); yOffset = offsets(2);
 
@@ -73,7 +73,8 @@ end
 
 % Plot image edges lines
 if opts.showImgBorders
-    plot_transformations(cor, model, 'plotOnImage', true, 'LineColour', valLineColour);
+    plot_transformations(model, cor, 'plotOnImage', true, ...
+        'LineColour', valLineColour);
 end
 
 % Turn of axis if plotting mosaic

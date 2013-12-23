@@ -15,8 +15,8 @@ function plot_images(model, cor)
 % (input 'cor') and visualise the matches between images.
 %
 % Inputs:
-%   - world:    World structure containing global features. Type 'help 
-%               build_world' for more info
+%   - model:    Index of images from visualindex. Type 'help
+%               visualindex_build' for more info
 %   - cor:      Correspondence structure containing links between different
 %               images (represented by a graph). Type 'help
 %               build_correspondence' for more info

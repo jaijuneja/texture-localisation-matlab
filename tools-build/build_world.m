@@ -29,7 +29,7 @@ function world = build_world(model, cor)
 %                       [global_feat_id; num_matched_feats; x_pos; y_pos]
 %                   *   world.feature_indices is a sparse matrix with m
 %                       columns (for m unique global features). Non-zero
-%                       elements in the mth indicate the indices of local
+%                       elements in the mth column are the indices of local
 %                       features in world.feature_map which map to global
 %                       feature m
 %                   *   world.num_features = length(world.features_global)
@@ -51,14 +51,14 @@ function world = build_world(model, cor)
 world.num_features = length(model.index.words{cor.ref_img});
 
 world.feature_map = [ 1:world.num_features
-                      ones(1,world.num_features) * cor.ref_img
+                      repmat(cor.ref_img, 1,world.num_features)
                       1:world.num_features    ];
 
 frames_glob = transform_frames(model.index.frames{cor.ref_img}, ...
     cor.H_to_ref{cor.ref_img});
 
 world.frames_local = [ 1:world.num_features
-                        ones(1,world.num_features) * cor.ref_img
+                        repmat(cor.ref_img, 1,world.num_features)
                         model.index.frames{cor.ref_img}   ];
                     
 world.features_global = [ 1:world.num_features
@@ -71,15 +71,19 @@ world.feature_indices = sparse(world.feature_indices);
 
 % At the moment using visual words instead of SIFT descriptors
 world.words_global = [ 1:world.num_features
-                       ones(1,world.num_features) * cor.ref_img
+                       repmat(cor.ref_img, 1,world.num_features)
                        model.index.words{cor.ref_img}    ];
                     
 world.features_mappable = true(1, world.num_features);
 
-% Keep a tab of the IDs of images mapped
+% Keep a tab of the number and IDs of images mapped
 images_mapped = zeros(1, length(cor.img_order));
 images_mapped(1) = cor.ref_img;
 num_images_mapped = 1;
+
+num_img_matches = length(cell2mat(cor.img_matches));
+match_ids = zeros(1, num_img_matches);
+num_ims_matched = 0;
 
 % Incrementally add features from other images to global map
 for i = cor.img_order
@@ -88,22 +92,34 @@ for i = cor.img_order
     
     for j = 1:numImgMatches
         
-        % If the features from the matched image have already been mapped,
-        % skip current iteration. This step ensures that features are not
-        % double counted - significantly improves speed.
-        if ismember(cor.img_matches{i}(j), images_mapped)
+        matchedImgID = cor.img_matches{i}(j);
+        num_ims_matched = num_ims_matched + 1;
+
+        % Checked whether the current image match has already been mapped
+        % First create match_id by concatenating image IDs
+        if i < matchedImgID
+            im1_id = i;
+            im2_id = matchedImgID;
+        else
+            im1_id = matchedImgID;
+            im2_id = i;
+        end
+        
+        match_id = str2double(strcat(num2str(im1_id),num2str(im2_id)));
+
+        % If the current image match has already been mapped then skip
+        % to next iteration
+        if ismember(match_id, match_ids)
+            match_ids(num_ims_matched) = match_id;
             continue;
         end
         
-        num_images_mapped = num_images_mapped + 1;
-        images_mapped(num_images_mapped) = cor.img_matches{i}(j);
-        
-        matchedImgID = cor.img_matches{i}(j);
+        match_ids(num_ims_matched) = match_id;
         
         im1_feats = cor.feature_matches{i}{j}(1,:);
         im2_feats = cor.feature_matches{i}{j}(2,:);
         
-        % find features that can be matched to existing features in the map
+        % Find features that can be matched to existing features in the map
         [matched_features, matched_ndx] = ismember(im1_feats, ...
             world.feature_map(3,:) .* (world.feature_map(2,:)==i));
         
@@ -125,6 +141,17 @@ for i = cor.img_order
                     new_global_id, matchedImgID, im2_feat_toadd);
             end
         end
+        
+        % If the unmatched features from the matched image have already
+        % been mapped, then skip to the next iteration. This step ensures
+        % that unmatched features are not double counted
+        
+        if ismember(matchedImgID, images_mapped)
+            continue;
+        end
+        
+        num_images_mapped = num_images_mapped + 1;
+        images_mapped(num_images_mapped) = matchedImgID;
         
         % Add unmatched features to map
         num_features = size(model.index.frames{matchedImgID}, 2);

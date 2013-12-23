@@ -107,7 +107,8 @@ node_names(:) = {'Image '};
 node_ids = strtrim(cellstr(num2str(model.index.ids'))');
 node_names(:) = strcat(node_names(:), node_ids(:));
 % Construct biograph of images using adjacency matrix
-cor.graph = biograph(cor.adjacency, node_names);
+cor.graph = biograph(tril(cor.adjacency), node_names, 'ShowArrows', 'off');
+
 % Use view(graph) to display biograph
 % Use imagesc(adjacency), axis equal to display adjacency matrix
 
