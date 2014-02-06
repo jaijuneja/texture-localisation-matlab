@@ -1,11 +1,11 @@
-function [cor, H] = fix_persp_distortion(model, cor, varargin)
+function [cor, H_w0] = get_poses(model, cor)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 17/12/2013
 % -------------------------------------------------------------------------
 %
-% FIX_PERSP_DISTORTION
-% [cor, H] = fix_persp_distortion(model, cor)
+% GET_POSES
+% [cor, H] = get_poses(model, cor)
 %
 % Removes perspective distortion from an image mosaic by prompting user for
 % four points that should be mapped to rectilinear co-ordinates.
@@ -18,10 +18,13 @@ function [cor, H] = fix_persp_distortion(model, cor, varargin)
 %               Type 'help build_correspondence' for more info
 %
 % Outputs:
-%   - cor:  Correspondence structure with corrected global transformations
-%           cor.H_to_ref
-%   - H:    Projective transformation that corrects the original image for
-%           perspective distortion (3x3 matrix)
+%   - cor:  The cor.H_to_world variable is now populated
+%   - H_w0: Planar homography from world co-ordinates to the reference
+%           image plane. This value is also assigned to cor.H_world_toref
+
+if isempty(cor.intrinsics)
+    error('No calibration matrix detected. Set it using set_intrinsics!')
+end
 
 % Plot the original mosaic
 mosaic = get_mosaic_pieces(model, cor);
@@ -49,8 +52,7 @@ x = x - offsets_bef(1);
 y = y - offsets_bef(2);
 
 % Compute rectangle that fits around the selected points
-xy_rec = rect_fit(x, y);
-
+xy_rec = to_square(x, y);
 xnew = xy_rec(1,:);
 ynew = xy_rec(2,:);
 
@@ -66,80 +68,68 @@ end
 % Hence we obtain the null space of A by computing SVD
 h = null(A);
 H = reshape(h, 3, 3)';
+% img_scale = 1000; % Scale in pixels of output mosaic image
+
+% Calculate aspect ratio alpha
+KinvH = cor.intrinsics \ H;
+alpha = norm(KinvH(:,2))/norm(KinvH(:,1));
+% Calculate transformation from world plane to reference plane
+H_w0 = H * [1 0 0; 0 1/alpha 0; 0 0 1];
+cor.H_world_toref = H_w0;
 
 % Correct global image transformations for perspective distortion
 mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
+cor.H_to_world = cor.H_to_ref;
 for i = mappable
-    cor.H_to_ref{i} = H \ cor.H_to_ref{i};
-    cor.H_to_ref{i} = cor.H_to_ref{i} * cor.H_to_ref{i}(3,3);
+    cor.H_to_world{i} = H_w0 \ cor.H_to_ref{i};
+    cor.H_to_world{i} = cor.H_to_world{i} / cor.H_to_world{i}(3,3);
 end
 
 % Plot the new mosaic
-newmosaic = get_mosaic_pieces(model, cor);
-new_image_map = build_mosaic(model, newmosaic, cor);
-figure; imagesc(new_image_map);
-hold on, axis equal, axis tight
+cor_plot = cor;
+cor_plot.H_to_ref = cor_plot.H_to_world;
+% Scale it up so that it can be visualised properly on the mosaic
+% cor_plot = transform_world(cor_plot, img_scale);
+figure; plot_transformations(model, cor_plot);
 
-xy_rec = H \ [x; y; ones(1, 4)];
+% Plot the mosaic on the world plane
+% newmosaic = get_mosaic_pieces(model, cor_plot);
+% new_image_map = build_mosaic(model, newmosaic, cor_plot);
+% figure; imagesc(new_image_map);
+% hold on
+%
+% Show the rectangle transformed to the world plane
+% xy_rec = transform_world(H_w0, img_scale) * [x; y; ones(1, 4)];
+xy_rec = H_w0 * [x; y; ones(1, 4)];
 xy_rec(1:2, :) = xy_rec(1:2, :) ./ [xy_rec(3, :); xy_rec(3, :)];
 xy_rec = xy_rec(1:2, :);
-
-offsets_aft = plot_transformations(model, cor, 'dontPlot', true);
-xy_rec(1, :) = xy_rec(1, :) + offsets_aft(1);
-xy_rec(2, :) = xy_rec(2, :) + offsets_aft(2);
-
+%
+% offsets_aft = plot_transformations(model, cor_plot, 'dontPlot', true);
+% xy_rec(1, :) = xy_rec(1, :) + offsets_aft(1);
+% xy_rec(2, :) = xy_rec(2, :) + offsets_aft(2);
+%
 % Plot rectangle on new mosaic
-plot([xy_rec(1,:) xy_rec(1,1)], [xy_rec(2,:) xy_rec(2,1)], 'r', 'LineWidth', 2)
+plot([xy_rec(1,:) xy_rec(1,1)], [xy_rec(2,:) xy_rec(2,1)], 'r', ...
+    'LineWidth', 2)
+% test_result(xy_rec);
 hold off
 
-% test_result(xy_rec);
-
-H = inv(H);
-
-function vertices = rect_fit(x, y)
-
-pts = length(x);
-
-line_seg = zeros(2, pts); % Line vectors
-line_len = zeros(1, pts); % Length of each line
-for i = 1:pts
-    j = ndx(i+1, pts);
-    line_seg(:, i) = [x(j) - x(i); y(j) - y(i)];
-    line_len(i) = pdist([0 0; line_seg(:, i)']);
-end
-
-% Get lenghts of rectangle edges that should be parallel
-line_len_1 = line_len([1 3]);
-line_len_2 = line_len([2 4]);
-% Determine which edge in each pair is shortest
-[~, minline1] = min(line_len_1);
-[~, minline2] = min(line_len_2);
-
-% Get indices of each of these lines
-if isequal(minline1, 2)
-    minline1 = 3;
-end
-minline2 = minline2 * 2;
-
-minline = [minline1 minline2];
-[~, linesame] = max(line_len(minline));
-maxminline = minline(linesame);
-
+function vertices = to_square(x, y)
+rectangle = [x; y];
+pts = length(rectangle);
 vertices = zeros(2, pts);
 
-vertices(:, maxminline) = [x(maxminline); y(maxminline)];
-vertices(:, ndx(maxminline+1, pts)) = ...
-    [x(ndx(maxminline+1, pts)); y(ndx(maxminline+1, pts))];
+dist_to_00 = pdist([0 0; rectangle']);
+dist_to_00 = dist_to_00(1:pts);
+ 
+[~, idx] = min(dist_to_00);
 
-normal = [line_seg(2, maxminline); -line_seg(1, maxminline)];
-normal = normal/pdist([0 0; normal']);
+square_clockwise = [0 1 1 0; 0 0 1 1];
 
-i = ndx(maxminline+2, pts);
-vertices(:, i) = ...
-    vertices(:, ndx(i-1, pts)) + normal * dot(line_seg(:, ndx(i-1, pts)), normal);
-i = ndx(maxminline+3, pts);
-vertices(:, i) = ...
-    vertices(:, ndx(i-1, pts)) - line_seg(:, maxminline);
+for i = 1:pts
+    j = ndx(idx + i - 1, pts);
+    vertices(:, j) = square_clockwise(:, i);
+end
 
 function index = ndx(index, numPoints)
 

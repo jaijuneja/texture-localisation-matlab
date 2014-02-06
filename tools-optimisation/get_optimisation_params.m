@@ -7,20 +7,20 @@ function [const, deriv] = get_optimisation_params(f_trans, f, H)
 % GET_OPTIMISATION_PARAMS
 % [const, deriv] = get_optimisation_params(f_trans, f, H)
 %
-% Given an energy function: ?(f, H) = f_trans - H * f
+% Given an energy function: E(f, H) = f_trans - H * f
 % 
 % get_optimisation_params outputs the coefficients of the energy function
-% ?(f, H) is linearised. We linearise by Taylor expansion:
+% E(f, H) is linearised. We linearise by Taylor expansion:
 %
-%   ?(f+df, H+dh) ? ?(f, H) + (??/?f')*df + (??/?vecH')*dvecH
+%   E(f+df, H+dh) = E(f, H) + (dE/df')*df + (dE/dvecH')*dvecH
 %
 % This can be written in vector form as:
 %
-%   ?(f+df, H+dh) ? ?(f, H) + [(??/?f') (??/?vecH')] * [df; dvecH]
+%   E(f+df, H+dh) = E(f, H) + [(dE/df') (dE/dvecH')] * [df; dvecH]
 %
 % Thus, the function get_optimisation_params returns the constant term
-% (const = ?(f, H)) and the derivative/Jacobian term (deriv = 
-% [(??/?f') (??/?vecH')]')
+% (const = E(f, H)) and the derivative/Jacobian term (deriv = 
+% [(dE/df') (dE/dvecH')]')
 %
 % Inputs:
 %   - f_trans:  Position [x_trans; y_trans] of feature/point in transformed
@@ -31,8 +31,8 @@ function [const, deriv] = get_optimisation_params(f_trans, f, H)
 %               such that H * [f; 1] transforms feature point f to frame B.
 %
 % Outputs:
-%   - const:    Constant term when ? is linearised (2x1 vector)
-%   - deriv:    Derivative term when ? is linearised (10x2 matrix)
+%   - const:    Constant term when E is linearised (2x1 vector)
+%   - deriv:    Derivative term when E is linearised (10x2 matrix)
 
 x = f(1);
 y = f(2);

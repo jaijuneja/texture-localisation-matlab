@@ -38,12 +38,19 @@ function plot_everything(model, world, cor, varargin)
 %                           default
 %       - showImgBorders:   Set to false if you don't want to display lines
 %                           along the borders of images; true by default
+%       - fromFrame:        Plots the view of the world from the reference
+%                           frame of image with the given ID. If set to
+%                           zero, viewed from reference frame. If set to
+%                           'world', viewed in world frame. Set to 'world'
+%                           by default
+%       - scaleFactor       Apply scale factor to world plot
 
 opts.matchesOnly = false;
 opts.globalFeatsOnly = false;
 opts.showFeatures = true;
 opts.showMosaic = true;
 opts.showImgBorders = true;
+opts.scaleFactor = 1;
 opts = vl_argparse(opts, varargin);
 valLineColour = 'black';
 

@@ -27,19 +27,25 @@ end
 
 %% Real application
 clear
-load('/Users/jai/Documents/MATLAB/4yp/test_images/balcony_resized/etc/index.mat')
-load('/Users/jai/Documents/MATLAB/4yp/test_images/balcony_resized/etc/cor.mat')
-load('/Users/jai/Documents/MATLAB/4yp/test_images/balcony_resized/etc/world.mat')
+load('/Users/jai/Documents/MATLAB/4yp/test_images/loop_resized/etc/index.mat')
+load('/Users/jai/Documents/MATLAB/4yp/test_images/loop_resized/etc/cor_ba.mat')
+load('/Users/jai/Documents/MATLAB/4yp/test_images/loop_resized/etc/world_ba.mat')
 
 %% Make a sample world and cor struct
 % Some basic cases first:
 % e.g. only move global features, only adjust H etc.
 %% Global feature bundle adjustment
-numIters = 1;
+numIters = 50;
+cor3 = cor; world2 = world;
+figure; plot_features(world2);
+figure; plot3d_poses(index, cor3, world2, 'showMosaic', true);
 for i = 1:numIters
-    [world, cor] = bundle_adjustment(world, cor, 'perspDistPenalty', 0, ...
-        'onlyOptimiseH', false);
+    [world2, cor3] = bundle_adjustment_world(world2, cor3, 'perspDistPenalty', 1, ...
+        'onlyOptimiseH', false, 'weighted', false, 'constrainScale', false);
 end
+world2 = update_world(world2, cor3);
+figure; plot_features(world2);
+figure; plot3d_poses(index, cor3, world2, 'showMosaic', true);
 %% Local feature bundle adjustment
 numIters = 1;
 for i = 1:numIters
@@ -51,5 +57,5 @@ world = update_world(world, cor);
 %%
 figure;
 % plot_feature_matches(world, cor);
-plot_everything(index, world, cor, 'showFeatures', false,  ...
+plot_everything(index, world, cor, 'showFeatures', true,  ...
     'matchesOnly', true, 'showImgBorders', true, 'showMosaic', true)

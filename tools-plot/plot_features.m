@@ -28,6 +28,8 @@ function plot_features(world, varargin)
 %       - xOffset:      Offset in x-direction; needed for example when
 %                       superimposing plot on an image
 %       - yOffset:      Offset in y-direction
+%       - scaleFactor:  Apply scale factor to feature co-ordinates
+%       - showLegend:   Set to true by default
 
 num_mappable_feats = sum(world.features_mappable);
 
@@ -36,7 +38,13 @@ opts.numBins = round(sqrt(world.num_features));
 opts.numSamples = 1e5;
 opts.xOffset = 0;
 opts.yOffset = 0;
-opts = vl_argparse(opts, varargin) ;
+opts.scaleFactor = 1;
+opts.showLegend = true;
+opts = vl_argparse(opts, varargin);
+
+if ~isequal(opts.scaleFactor, 1)
+    world = transform_world(world, opts.scaleFactor);
+end
 
 % If the number of samples specified is greater than the number of mappable
 % features, there is no need to sample points. Just use raw plot method!
@@ -54,7 +62,7 @@ if strcmp(opts.plotStyle, 'raw')
         world.features_global(4, matched) + opts.yOffset, 'r+');
     set(gca,'YDir','Reverse')
     axis equal
-    legend('Unmatched Features', 'Matched Features');
+    if opts.showLegend, legend('Unmatched Features', 'Matched Features'); end
     title('Global Map of Features');
     
 elseif strcmp(opts.plotStyle, 'histogram')

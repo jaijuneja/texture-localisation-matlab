@@ -1,16 +1,16 @@
-function [world, cor] = bundle_adjustment(world, cor, varargin)
+function [world, cor] = bundle_adjustment_world(world, cor, varargin)
 
 opts.perspDistPenalty = 0;
 opts.constrainScale = false;
 opts.onlyOptimiseH = false;
 opts.weighted = false;
 opts.dH_thresh = 0.1;
-opts.df_thresh = 1;
+opts.df_thresh = 0.01;
 opts = vl_argparse(opts, varargin);
 
 % Note: we only optimise features that have been matched between multiple
 % views, and then adjust unmatched features according to the new values of
-% H_to_ref obtained
+% H_to_world obtained
 
 % Collect relevant features for optimisation
 matched = (world.features_global(2,:) > 1) & world.features_mappable;
@@ -18,7 +18,7 @@ features_matched = world.features_global(:,matched);
 indices_matched = world.feature_indices(:,matched);
 
 % Collect relevant views for optimisation
-ims_matched = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
+ims_matched = find(cellfun(@(x)(~isempty(x)), cor.H_to_world));
 num_views = length(ims_matched);
 num_feats_glob = sum(matched);
 num_feats_loc = nnz(indices_matched);
@@ -68,7 +68,7 @@ for k = 1:length(features_matched)
         % Get the local optimisation parameters (a is the constant term, b
         % is the derivative term)
         [a, b] = get_optimisation_params(features_matched(3:4,k), ...
-            frame_local(3:4), cor.H_to_ref{imgID});
+            frame_local(3:4), cor.H_to_world{imgID});
         
         % Plug the local values into the 'global' vector A
         A(fLoc_ndx:fLoc_ndx+1) = a;
@@ -93,7 +93,7 @@ for k = 1:length(features_matched)
         % Energy is increased if h31 and h32 deviate from zero
         if ~isequal(opts.perspDistPenalty, 0)
             [a31_penalty, h31_penalty, a32_penalty, h32_penalty] = ...
-                constrain_perspective(cor.H_to_ref{imgID}, opts.perspDistPenalty);
+                constrain_perspective(cor.H_to_world{imgID}, opts.perspDistPenalty);
             B(img_ndx+2) = B(img_ndx+2) + h31_penalty;
             B(img_ndx+5) = B(img_ndx+5) + h32_penalty;
             G31_penalty = opts.perspDistPenalty;
@@ -113,7 +113,7 @@ if opts.constrainScale
         imgID = ims_matched(i);
         imgLoc = find(ismember(ims_matched,imgID));
         img_ndx = (num_feats_glob * 2) + (imgLoc * 8) - 7;
-        [const, deriv] = constrain_scale(cor.H_to_ref{imgID});
+        [const, deriv] = constrain_scale(cor.H_to_world{imgID});
         if isequal(const, 0), const = 1; end
         Aeq_scale(2*i-1, img_ndx:img_ndx+1) = deriv(1:2)/(2*sqrt(const));
         Aeq_scale(2*i-1, img_ndx+3:img_ndx+4) = deriv(3:4)/(2*sqrt(const));
@@ -154,7 +154,7 @@ end
 
 options = optimoptions('quadprog');
 options.Algorithm = 'interior-point-convex'; % 'trust-region-reflective';
-% options.Display = 'off';
+options.Display = 'off';
 if opts.constrainScale, options.TolCon = 1e-1; end
 delta = quadprog(sparse(C), sparse(B), sparse(Aeq_scale), sparse(Beq_scale), [], [], ...
     delta_lower, delta_upper, [], options);
@@ -184,7 +184,7 @@ if doEnergyCalcTest
             
             % Get the local optimisation parameters
             [a, b] = get_optimisation_params(features_matched(3:4,k), ...
-                frame_local(3:4), cor.H_to_ref{imgID});
+                frame_local(3:4), cor.H_to_world{imgID});
             
             if opts.onlyOptimiseH
                 b(1:2,:) = [];
@@ -201,8 +201,8 @@ if doEnergyCalcTest
             
             % Add energy due to perspective distortion penalty
             E_current = E_current + opts.perspDistPenalty * ...
-                ( (cor.H_to_ref{imgID}(3,1) + delta_new(h31_ndx))^2 + ...
-                (cor.H_to_ref{imgID}(3,2) + delta_new(h32_ndx))^2 );
+                ( (cor.H_to_world{imgID}(3,1) + delta_new(h31_ndx))^2 + ...
+                (cor.H_to_world{imgID}(3,2) + delta_new(h32_ndx))^2 );
         end
     end
     % Check that naive calculation yields same result
@@ -221,13 +221,13 @@ for i = 1:num_views
     imgID = ims_matched(i);
     img_ndx = num_feats_glob*2+i*8-7;
     for j = 1:8
-        cor.H_to_ref{imgID}(j) = cor.H_to_ref{imgID}(j) + delta(img_ndx+j-1);
+        cor.H_to_world{imgID}(j) = cor.H_to_world{imgID}(j) + delta(img_ndx+j-1);
     end
 end
 
 % We need a version of build_world that only updates single-view features
 % Maybe a function update_world that asks what information is used for
-% update - e.g. use cor.H_to_ref, ignore matched feats. Use cor.H, ignore
+% update - e.g. use cor.H_to_world, ignore matched feats. Use cor.H, ignore
 % no feats.
 
 fprintf(['Iteration of bundle adjustment completed: \n ' ...
@@ -250,13 +250,13 @@ if doLinearErrorTest
             
             % Get the local optimisation parameters
             [a, ~] = get_optimisation_params(features_matched(3:4,k), ...
-                frame_local(3:4), cor.H_to_ref{imgID});
+                frame_local(3:4), cor.H_to_world{imgID});
             
             % Incrementally calculate energy at each iteration
             E_after_true = E_after_true + double(norm(a))^2;
             
             E_after_true = E_after_true + opts.perspDistPenalty * ...
-                ( cor.H_to_ref{imgID}(3,1)^2 + cor.H_to_ref{imgID}(3,2)^2 );
+                ( cor.H_to_world{imgID}(3,1)^2 + cor.H_to_world{imgID}(3,2)^2 );
         end
     end
     lin_error_pc = round(abs((E_after_true - E_after)/E_after_true)*100);

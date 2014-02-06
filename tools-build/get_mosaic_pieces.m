@@ -23,6 +23,8 @@ function mosaic = get_mosaic_pieces(model, cor)
 %                       the where each element contains an image
 %                       transformed relative to the reference image. The
 %                       ref image has ID cor.ref_img
+%                   *   mosaic.ids is an n-vector with the ids of each
+%                       image in the mosaic
 %                   *   mosaic.origins is a 1xn cell array where, for each
 %                       piece of the mosaic, the origin of the reference
 %                       image is given in pixel co-ordinates ([row col])
@@ -35,12 +37,15 @@ num_pieces = length(ims_mappable);
 im_ref = imread(model.index.names{cor.ref_img});
 
 % Initialise loop variables
+mosaic.ids = zeros(1, num_pieces);
 mosaic.pieces = cell(1, num_pieces);
 mosaic.origins = cell(1, num_pieces);
 
 % Get all the pieces of the mosaic and put them in the mosaic structure
 for match_ndx = 1:num_pieces
     im_new_ndx = ims_mappable(match_ndx);
+    mosaic.ids(match_ndx) = im_new_ndx;
+    
     im_new = imread(model.index.names{im_new_ndx});
     H = cor.H_to_ref{im_new_ndx};
     [~, mosaic.pieces{match_ndx}, mosaic.origins{match_ndx}] ...

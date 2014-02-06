@@ -37,7 +37,7 @@ for i = 1:numUnmatchedFeats
     local_frame = world.frames_local(3:8, local_id);
     
     % Update global feature frame
-    global_frame = transform_frames(local_frame, cor.H_to_ref{img_id});
+    global_frame = transform_frames(local_frame, cor.H_to_world{img_id});
     world.features_global(3:4, global_id) = global_frame(1:2);
 end
 

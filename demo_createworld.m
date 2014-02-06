@@ -1,12 +1,12 @@
 %% Get paths to all images in database and generate index struct
 
-[index, images, path] = build_index('test_images/room/', 'numWords', 5e3);
+[index, images, path] = build_index('test_images/floor/', 'numWords', 1e4);
 
 %% Find correspondences between images
 
 if ~exist(path.cor, 'file')
     % Build correlation structure
-    cor = build_correspondence(index, 'percentThresh', 0.5);
+    cor = build_correspondence(index, 'percentThresh', 0.5, 'numThresh', 10);
     % Save it
     save(path.cor, 'cor');
 else
@@ -21,6 +21,9 @@ plot_images(index, cor);
 %% Change reference image
 cor = set_refimg(cor, 5);
 save(path.cor, 'cor');
+%% Get global camera poses
+cor = get_poses(index, cor);
+figure; plot3d_poses(index, cor);
 %% Build global map of features
 if ~exist(path.world, 'file')
     % Build correlation structure
@@ -42,7 +45,8 @@ figure; imagesc(image_map); axis off, axis equal
 
 %% Superimpose image mosaic with feature plot
 figure;
-plot_everything(index, world, cor, 'matchesOnly', true, 'showMosaic', true)
+plot_everything(index, world, cor, 'showFeatures', true, ...
+    'matchesOnly', true, 'showImgBorders', false, 'showMosaic', true)
 
 %% Correct image for perspective distortion
 cor = fix_persp_distortion(index, cor);

@@ -31,7 +31,7 @@ function cor = build_correspondence(model, varargin)
 %         	images (graph representation using an adjacency matrix):
 %               *   cor.id is an ordered vector of image ids [1 2 ... n]
 %               *   cor.ref_img is the ID of the image to be used as
-%                   the reference co-ordinate frame
+%                   the initial reference co-ordinate frame
 %               *   cor.img_matches is a 1xn cell array where each index
 %                   cor.img_matches{i} contains the ids of the images
 %                   matched to image i
@@ -48,6 +48,15 @@ function cor = build_correspondence(model, varargin)
 %               *   cor.H_to_ref is a 1xn cell array where each index
 %                   cor.H_to_ref{i} is a 3x3 transformation matrix relating
 %                   image i to the reference image (image 1 by default)
+%               *   cor.H_world_toref is a 3x3 planar homography
+%                   transforming world co-ordinates to pixel co-ordinates
+%                   in the reference image up to an unknown scale. it is
+%                   initialised as a blank array [], and is populated in
+%                   the function get_poses
+%               *   cor.H_to_world is similar to cor.H_to_ref, but relates
+%                   each image to the world plane. In this function it is
+%                   initialised as a blank array []. It is populated in
+%                   the function get_poses
 %               *   cor.adjacency is an nxn adjacency matrix where
 %                   cor.adjacency(i,j) indicates a good match between
 %                   images i and j. Ideally it should be symmetric but this
@@ -55,6 +64,9 @@ function cor = build_correspondence(model, varargin)
 %                   by calling imagesc(cor.adjacency)
 %               *   cor.graph is a biograph representation of the adjacency
 %                   matrix. Use view(cor.graph) to view it
+%               *   cor.intrinsics is the calibration matrix of the camera
+%                   used. It is initialised as an empty array [] and is
+%                   populated using the function set_intrinsics
 
 % Score threshold is a percentage of the maximum score AND greater than a
 % specified value (currently hardcoded and set to 20 below)
@@ -67,15 +79,24 @@ if opts.percentThresh > 1
     error('Property "percentThresh" must be less than 1')
 end
 
-% Initialise cor structure
-cor.id = zeros(1, length(model.index.ids));
-cor.img_matches = cell(1, length(model.index.ids));
-cor.feature_matches = cell(1, length(model.index.ids));
-cor.scores = cell(1, length(model.index.ids));
-cor.H = cell(1, length(model.index.ids));
-cor.H_to_ref = cell(1, length(model.index.ids)); % Transformation to reference image
-cor.adjacency = zeros(length(model.index.ids));
+num_imgs = length(model.index.ids);
 
+% Initialise cor structure
+fprintf('Initialising build... \n')
+cor.id = zeros(1, num_imgs);
+cor.img_matches = cell(1, num_imgs);
+cor.feature_matches = cell(1, num_imgs);
+cor.scores = cell(1, num_imgs);
+cor.H = cell(1, num_imgs);
+cor.H_to_ref = cell(1, num_imgs); % Transformation to reference image
+cor.adjacency = zeros(num_imgs);
+
+cor.H_world_toref = []; % Populate this using get_poses
+cor.H_to_world = []; % Populate this using get_poses
+cor.intrinsics = []; % Populate this using set_intrinsics
+
+
+counter = 0;
 for i = model.index.ids
     [ids, scores, result] = visualindex_query(model, i);
     score_thresh = scores(2) * opts.percentThresh; % of best match score
@@ -87,6 +108,11 @@ for i = model.index.ids
     cor.H{i} = result.H(goodmatch);
     cor.feature_matches{i} = result.matches(goodmatch);
     cor.adjacency(i, ids(goodmatch)) = 1;
+    
+    % Display percentage of build that is complete
+    counter = counter + 1;
+    pc_complete = int64((counter / num_imgs) * 100);
+    fprintf([num2str(pc_complete) '%% of build complete \n'])
 end
 
 % Remove edges that are not bi-directional

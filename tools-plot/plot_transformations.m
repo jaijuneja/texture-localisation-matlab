@@ -28,6 +28,10 @@ function offsets = plot_transformations(model, cor, varargin)
 %                       but just need the offset values
 %       - addDelay:     When set to true, adds a 1 second delay between
 %                       plotting each image
+%       - fromFrame:    Which reference frame to plot the world from.
+%                       Either an integer indicating the index of the image
+%                       (0 corresponds to reference image), or 'w' for the
+%                       world plane
 %
 % Outputs:
 %   - offset:   [xOffset; yOffset] values needed for superimposing the plot
@@ -37,16 +41,17 @@ opts.LineColour = 'black';
 opts.plotOnImage = false;
 opts.dontPlot = false;
 opts.addDelay = false;
+opts.fromFrame = 'w';
 opts = vl_argparse(opts, varargin);
 
-ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
+ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_world));
 vertices = cell(1,length(ims_mappable));
 
 for i = 1:length(ims_mappable)
     img = ims_mappable(i);
     im_info = imfinfo(model.index.names{img});
     imsize = [im_info.Width; im_info.Height];
-    vertices{i} = transform_rect(cor.H_to_ref{img}, imsize);
+    vertices{i} = transform_rect(cor.H_to_world{img}, imsize);
 end
 
 % Get offset values
@@ -85,7 +90,9 @@ end
 set(gca, 'YDir', 'reverse')
 axis equal, hold off
 
+% -----------------------------------------------
 function new_vertices = transform_rect(H, imsize)
+% -----------------------------------------------
 % Transforms the corners of a rectangle with dimensions imsize(2) x
 % imsize(1) by the transformation matrix H. Returns the new vertices.
 
@@ -94,8 +101,8 @@ H_bot = H(3,:);
 
 % Vertices of image in homogeneous co-ordinates (note that 5th vertex is
 % same as first, so that when plotting them they form a closed polygon)
-im_vertices =   [  0    imsize(1)   imsize(1)           0   0
-                   0            0   imsize(2)   imsize(2)   0
+im_vertices =   [  1    imsize(1)   imsize(1)           1   1
+                   1            1   imsize(2)   imsize(2)   1
                    1            1           1           1   1   ];
 
 % Vertices of transformed image

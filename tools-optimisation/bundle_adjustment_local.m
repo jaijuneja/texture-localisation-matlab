@@ -151,6 +151,9 @@ if opts.onlyOptimiseH
     num_feats_loc = 0;
 end
 
+options = optimoptions('quadprog');
+options.Algorithm = 'trust-region-reflective';
+options.Display = 'off';
 delta = quadprog(G, h, [], [], [], [], delta_lower, delta_upper);
 % delta = fmincon(FUN(delta),X0,A,B,Aeq,Beq,LB,UB,NONLCON)
 
@@ -272,7 +275,7 @@ if doLinearErrorTest
     lin_error_pc = round(abs((E_after_true - E_after)/E_after_true)*100);
     % Check that naive calculation yields same result
     fprintf(['Actual energy after optimisation is %d \n (%d%% error ' ...
-        'from linearised energy prediction) \n'], E_after_true, lin_error_pc);
+        'from linearised energy prediction) \n\n'], E_after_true, lin_error_pc);
 end
 %%%%%%%%%%%%%%%%%% END LINEARIZATION ERROR CALCULATION %%%%%%%%%%%%%%%%%%%%
 

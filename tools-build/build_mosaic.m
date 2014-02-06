@@ -29,6 +29,7 @@ im_ref = imread(model.index.names{cor.ref_img});
 % Initialise image map
 % image_map = im2double(im_ref);
 image_map = nan(size(im_ref));
+mass = zeros(size(im_ref));
 
 % Origin is bottom left of reference image
 origin = [size(im_ref, 1), 1];
@@ -61,6 +62,7 @@ for i = 1:num_matches
         image_map = [nan(toprows, map_size(2), 3); image_map];
         map_size = size(image_map);
         origin(1) = origin(1) + toprows;
+        mass = [zeros(toprows, map_size(2), 3); mass];
     end
     
     if space_bottom > space_bottom_tmp
@@ -72,6 +74,7 @@ for i = 1:num_matches
         bottomrows = space_bottom_tmp - space_bottom;
         image_map = [image_map; nan(bottomrows, map_size(2), 3)];
         map_size = size(image_map);
+        mass = [mass; zeros(bottomrows, map_size(2), 3)];
     end 
     
     if space_left > space_left_tmp
@@ -84,6 +87,7 @@ for i = 1:num_matches
         image_map = [nan(map_size(1), colsleft, 3), image_map];
         map_size = size(image_map);
         origin(2) = origin(2) + colsleft;
+        mass = [zeros(map_size(1), colsleft, 3), mass];
     end
         
     if space_right > space_right_tmp
@@ -95,14 +99,41 @@ for i = 1:num_matches
         colsright = space_right_tmp - space_right;
         image_map = [image_map, nan(map_size(1), colsright, 3)];
         map_size = size(image_map);
+        mass = [mass, zeros(map_size(1), colsright, 3)];
     end
     
+    mosaic.pieces{i} = image_map_tmp;
+    mosaic.origins{i} = origin_tmp;
+    
     % Take average of the two images being superimposed
-    mass = ~isnan(image_map) + ~isnan(image_map_tmp);
+    mass_new = mass + ~isnan(image_map_tmp);
     image_map(isnan(image_map)) = 0 ;
     image_map_tmp(isnan(image_map_tmp)) = 0 ;
-    image_map = (image_map + image_map_tmp) ./ mass;
+    
+    image_map = (image_map .* mass + image_map_tmp) ./ mass_new;
     image_map(image_map == 0) = NaN;
+    
+    mass = mass_new;
 end
 
+mass = mass(:,:,1) | mass(:,:,2) | mass(:,:,3);
+% Remove black pixel padding
+pixels = (mass ~= 0);
+[row, col] = find(pixels);
+minrow = min(row);
+if ~isequal(minrow, 1)
+    image_map(1:minrow-1, :, :) = [];
+end
+mincol = min(col);
+if ~isequal(mincol, 1)
+    image_map(:, 1:mincol-1, :) = [];
+end
+maxrow = max(row) - minrow + 1;
+if ~isequal(maxrow, size(image_map, 1) - minrow + 1)
+    image_map(maxrow+1:end, :, :) = [];
+end
+maxcol = max(col);
+if ~isequal(maxcol, size(image_map, 2) - mincol + 1)
+    image_map(:, maxcol+1:end, :) = [];
+end
 end

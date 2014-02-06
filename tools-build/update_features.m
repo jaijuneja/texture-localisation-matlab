@@ -37,10 +37,10 @@ world.words_global(:, end+1) = ...
     [fGlobalID; imgID; ...
     model.index.words{imgID}(fLocalID)];
 
-if ~isempty(cor.H_to_ref{imgID})
+if ~isempty(cor.H_to_world{imgID})
     % Transform local frames to global co-ordinate system
     global_frame = transform_frames(model.index.frames{imgID}(:,fLocalID), ...
-        cor.H_to_ref{imgID});
+        cor.H_to_world{imgID});
 else
     global_frame(:, end+1) = nan(6,1);
 end

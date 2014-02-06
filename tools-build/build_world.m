@@ -23,7 +23,7 @@ function world = build_world(model, cor)
 %                       features, each of which is mapped to a global
 %                       feature in the form:
 %                       [global_feat_id; img_id; local_feat_id]
-%                   *   world.features_global is a 3xm matrix for m unique
+%                   *   world.features_global is a 4xm matrix for m unique
 %                       global features, containing estimates of each
 %                       feature's global position. It takes the form:
 %                       [global_feat_id; num_matched_feats; x_pos; y_pos]
@@ -55,7 +55,7 @@ world.feature_map = [ 1:world.num_features
                       1:world.num_features    ];
 
 frames_glob = transform_frames(model.index.frames{cor.ref_img}, ...
-    cor.H_to_ref{cor.ref_img});
+    cor.H_to_world{cor.ref_img});
 
 world.frames_local = [ 1:world.num_features
                         repmat(cor.ref_img, 1,world.num_features)
@@ -85,7 +85,11 @@ num_img_matches = length(cell2mat(cor.img_matches));
 match_ids = zeros(1, num_img_matches);
 num_ims_matched = 0;
 
+fprintf('Initialising world build... \n');
+
 % Incrementally add features from other images to global map
+num_imgs = length(cor.img_order);
+img_counter = 0;
 for i = cor.img_order
     
     numImgMatches = length(cor.img_matches{i});
@@ -172,6 +176,13 @@ for i = cor.img_order
         
     end
     
+    % Print percent of build completed
+    img_counter = img_counter + 1;
+    pc_complete = round(100 * img_counter/num_imgs);
+    fprintf([num2str(pc_complete) '%% of build complete \n']);
 end
+
+% Get weighting values for features
+world.feature_weights = get_feature_weights(world, cor);
 
 end

@@ -24,11 +24,19 @@ function plot_feature_matches(world, cor, varargin)
 %       - xOffset:          Offset in x-direction; needed for example when
 %                           superimposing plot on an image
 %       - yOffset:          Offset in y-direction
+%       - scaleFactor:      Apply scale factor to feature co-ordinates
+%       - showLegend:       Set to true by default
 
 opts.globalFeatsOnly = false;
 opts.xOffset = 0;
 opts.yOffset = 0;
+opts.scaleFactor = 1;
+opts.showLegend = true;
 opts = vl_argparse(opts, varargin);
+
+if ~isequal(opts.scaleFactor, 1)
+    world = transform_world(world, opts.scaleFactor);
+end
 
 % Find global features with multiple local matches
 matched_global = world.features_global(2,:) > 1;
@@ -47,13 +55,13 @@ if ~opts.globalFeatsOnly
     local_frames = world.frames_local(:, matched_local); % Local SIFT ellipses
 
     % Transform local features to global frame
-    ims_matched = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
+    ims_matched = find(cellfun(@(x)(~isempty(x)), cor.H_to_world));
     local_feats = zeros(6, length(matched_local));
     for i = 1:length(ims_matched)
         img = ims_matched(i);
         img_feats = ismember(local_frames(2,:), img);
         local_feats(:, img_feats) = transform_frames(...
-            local_frames(3:8, img_feats), cor.H_to_ref{img});
+            local_frames(3:8, img_feats), cor.H_to_world{img});
     end
         
     % Plot local features in blue. Plot should show the spread of local
@@ -62,7 +70,7 @@ if ~opts.globalFeatsOnly
     labels{2} = 'Local Features';
 end
 
-legend(labels);
+if opts.showLegend, legend(labels); end
 title('Plot of Matched Features');
 hold off
 

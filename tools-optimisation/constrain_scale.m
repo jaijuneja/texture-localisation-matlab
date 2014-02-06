@@ -6,7 +6,7 @@ const = det(A) - 1;
 
 ddetA_dA = det(A) * inv(A)';
 
-deriv = 2 * const * ddetA_dA(:);
+deriv = 2 * const * ddetA_dA(:)';
 
 const = const^2;
 

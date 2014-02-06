@@ -1,11 +1,11 @@
-function [world, cor] = bundle_adjustment(world, cor, varargin)
+function [world, cor] = bundle_adjustment_weighted(world, cor, varargin)
 
 opts.perspDistPenalty = 0;
 opts.constrainScale = false;
 opts.onlyOptimiseH = false;
-opts.weighted = false;
 opts.dH_thresh = 0.1;
 opts.df_thresh = 1;
+opts.weighted = true;
 opts = vl_argparse(opts, varargin);
 
 % Note: we only optimise features that have been matched between multiple
@@ -24,22 +24,13 @@ num_feats_glob = sum(matched);
 num_feats_loc = nnz(indices_matched);
 
 % Initialise the terms of the quadratic optimisation problem
-num_unknowns = num_feats_glob * 2 + num_views * 8;
 A = zeros(num_feats_loc * 2, 1);
-B = zeros(num_unknowns, 1);
-C = zeros(num_unknowns);
+h = zeros(num_feats_glob * 2 + num_views * 8, 1);
+G = zeros(num_feats_glob * 2 + num_views * 8);
 if ~isequal(opts.perspDistPenalty, 0)
     A_penalty = zeros(num_feats_loc * 2, 1);
 else
     A_penalty = [];
-end
-
-if opts.constrainScale
-    Aeq_scale = zeros(length(ims_matched)*2, num_unknowns);
-    Beq_scale = zeros(length(ims_matched)*2, 1);
-else
-    Aeq_scale = [];
-    Beq_scale = [];
 end
 
 feat_counter = 0;
@@ -63,43 +54,49 @@ for k = 1:length(features_matched)
         % Calculate parameters for quadprog
         % Recall the formula:
         % Energy = a'*a + 2*a'*b'*delta + delta'*b*b'*delta
-        % Quadprog takes form quadprog(G, h) for 1/2*x'*C*x + B'*x
+        % Quadprog takes form quadprog(G, h) for 1/2*x'*G*x + h'*x
 
         % Get the local optimisation parameters (a is the constant term, b
         % is the derivative term)
         [a, b] = get_optimisation_params(features_matched(3:4,k), ...
             frame_local(3:4), cor.H_to_ref{imgID});
         
+        if opts.weighted
+            feature_weight = world.feature_weights(matched_loc_features(i));
+            a = feature_weight * a;
+            b = feature_weight * b;
+        end
+        
         % Plug the local values into the 'global' vector A
         A(fLoc_ndx:fLoc_ndx+1) = a;
         
-        % Plug the local values into the 'global' vector B
-        B_loc = 2 * a' * b'; % 10 x 1 vector
-        B(fGlob_ndx:fGlob_ndx+1) = B(fGlob_ndx:fGlob_ndx+1) + B_loc(1:2)';
-        B(img_ndx:img_ndx+7) = B(img_ndx:img_ndx+7) + B_loc(3:10)';
+        % Plug the local values into the 'global' vector h
+        h_loc = 2 * a' * b'; % 10 x 1 vector
+        h(fGlob_ndx:fGlob_ndx+1) = h(fGlob_ndx:fGlob_ndx+1) + h_loc(1:2)';
+        h(img_ndx:img_ndx+7) = h(img_ndx:img_ndx+7) + h_loc(3:10)';
 
-        % Plug the local values into the 'global' matrix C
-        C_loc = (b * b'); % 10 x 10 matrix
-        C(fGlob_ndx:fGlob_ndx+1,fGlob_ndx:fGlob_ndx+1) = ...
-            C(fGlob_ndx:fGlob_ndx+1,fGlob_ndx:fGlob_ndx+1) + C_loc(1:2,1:2);
-        C(fGlob_ndx:fGlob_ndx+1,img_ndx:img_ndx+7) = ...
-            C(fGlob_ndx:fGlob_ndx+1,img_ndx:img_ndx+7) + C_loc(1:2,3:10);
-        C(img_ndx:img_ndx+7,fGlob_ndx:fGlob_ndx+1) = ...
-            C(img_ndx:img_ndx+7,fGlob_ndx:fGlob_ndx+1) + C_loc(3:10,1:2);
-        C(img_ndx:img_ndx+7,img_ndx:img_ndx+7) = ...
-            C(img_ndx:img_ndx+7,img_ndx:img_ndx+7) + C_loc(3:10,3:10);
+        % Plug the local values into the 'global' matrix G
+        G_loc = (b * b'); % 10 x 10 matrix
+        G(fGlob_ndx:fGlob_ndx+1,fGlob_ndx:fGlob_ndx+1) = ...
+            G(fGlob_ndx:fGlob_ndx+1,fGlob_ndx:fGlob_ndx+1) + G_loc(1:2,1:2);
+        G(fGlob_ndx:fGlob_ndx+1,img_ndx:img_ndx+7) = ...
+            G(fGlob_ndx:fGlob_ndx+1,img_ndx:img_ndx+7) + G_loc(1:2,3:10);
+        G(img_ndx:img_ndx+7,fGlob_ndx:fGlob_ndx+1) = ...
+            G(img_ndx:img_ndx+7,fGlob_ndx:fGlob_ndx+1) + G_loc(3:10,1:2);
+        G(img_ndx:img_ndx+7,img_ndx:img_ndx+7) = ...
+        G(img_ndx:img_ndx+7,img_ndx:img_ndx+7) + G_loc(3:10,3:10);
     
         % We can introduce a penalty for perspective distortion, such that
         % Energy is increased if h31 and h32 deviate from zero
         if ~isequal(opts.perspDistPenalty, 0)
             [a31_penalty, h31_penalty, a32_penalty, h32_penalty] = ...
                 constrain_perspective(cor.H_to_ref{imgID}, opts.perspDistPenalty);
-            B(img_ndx+2) = B(img_ndx+2) + h31_penalty;
-            B(img_ndx+5) = B(img_ndx+5) + h32_penalty;
+            h(img_ndx+2) = h(img_ndx+2) + h31_penalty;
+            h(img_ndx+5) = h(img_ndx+5) + h32_penalty;
             G31_penalty = opts.perspDistPenalty;
             G32_penalty = opts.perspDistPenalty;
-            C(img_ndx+2,img_ndx+2) = C(img_ndx+2,img_ndx+2) + G31_penalty;
-            C(img_ndx+5,img_ndx+5) = C(img_ndx+5,img_ndx+5) + G32_penalty;
+            G(img_ndx+2,img_ndx+2) = G(img_ndx+2,img_ndx+2) + G31_penalty;
+            G(img_ndx+5,img_ndx+5) = G(img_ndx+5,img_ndx+5) + G32_penalty;
             % Test this in simple case first
             % Collect constant terms to check E before and after
             A_penalty(fLoc_ndx:fLoc_ndx+1) = [a31_penalty; a32_penalty];
@@ -107,30 +104,14 @@ for k = 1:length(features_matched)
     end
 end
 
-if opts.constrainScale
-     opts.dH_thresh = 1;
-    for i = 1:length(ims_matched)
-        imgID = ims_matched(i);
-        imgLoc = find(ismember(ims_matched,imgID));
-        img_ndx = (num_feats_glob * 2) + (imgLoc * 8) - 7;
-        [const, deriv] = constrain_scale(cor.H_to_ref{imgID});
-        if isequal(const, 0), const = 1; end
-        Aeq_scale(2*i-1, img_ndx:img_ndx+1) = deriv(1:2)/(2*sqrt(const));
-        Aeq_scale(2*i-1, img_ndx+3:img_ndx+4) = deriv(3:4)/(2*sqrt(const));
-        Aeq_scale(2*i, img_ndx:img_ndx+1) = -deriv(1:2)/(2*sqrt(const));
-        Aeq_scale(2*i, img_ndx+3:img_ndx+4) = -deriv(3:4)/(2*sqrt(const));
-        Beq_scale(2*i-1:2*i) = 1-const;
-    end
-end
-        
 A = [A; A_penalty];
 E_before = A' * A;
 
-C = 2 * C;
+G = 2 * G;
 
 % Impose constraint that delta is small, since we've linearised
 H_ndxs = num_feats_glob*2+1:num_feats_glob*2 + num_views*8;
-delta_upper = inf(size(B));
+delta_upper = inf(size(h));
 delta_upper(H_ndxs) = opts.dH_thresh;
 
 F_ndxs = 1:num_feats_glob*2;
@@ -142,26 +123,22 @@ delta_lower = - delta_upper;
 % terms from optimisation parameters
 if opts.onlyOptimiseH
     feat_ndxs = 1:num_feats_glob*2;
-    C(feat_ndxs, :) = [];
-    C(:, feat_ndxs) = [];
-    B(feat_ndxs) = [];
+    G(feat_ndxs, :) = [];
+    G(:, feat_ndxs) = [];
+    h(feat_ndxs) = [];
     delta_upper = [];
     delta_lower = [];
     num_feats_glob = 0;
-    
-    Aeq_scale(:, feat_ndxs) = [];
 end
 
 options = optimoptions('quadprog');
-options.Algorithm = 'interior-point-convex'; % 'trust-region-reflective';
-% options.Display = 'off';
-if opts.constrainScale, options.TolCon = 1e-1; end
-delta = quadprog(sparse(C), sparse(B), sparse(Aeq_scale), sparse(Beq_scale), [], [], ...
-    delta_lower, delta_upper, [], options);
+options.Algorithm = 'trust-region-reflective';
+options.Display = 'off';
+delta = quadprog(G, h, [], [], [], [], delta_lower, delta_upper, [], options);
 % delta(num_feats_glob * 2 + 1:end) = 0; % Ignore transformations (for testing purposes)
 % delta(1:num_feats_glob * 2) = 0; % Ignore features (for testing purposes)
 
-E_after = A'*A + B'*delta + 0.5*delta'*C*delta;
+E_after = A'*A + h'*delta + 0.5*delta'*G*delta;
 
 %%%%%%%%%%%%%%%%%%%%% START ENERGY CALCULATION TEST %%%%%%%%%%%%%%%%%%%%%%%
 % Calculate energy using naive approach and compare with result above
@@ -186,6 +163,12 @@ if doEnergyCalcTest
             [a, b] = get_optimisation_params(features_matched(3:4,k), ...
                 frame_local(3:4), cor.H_to_ref{imgID});
             
+            if opts.weighted
+                feature_weight = world.feature_weights(matched_loc_features(i));
+                a = feature_weight * a;
+                b = feature_weight * b;
+            end
+        
             if opts.onlyOptimiseH
                 b(1:2,:) = [];
                 fGlob_ndx = [];
@@ -251,6 +234,11 @@ if doLinearErrorTest
             % Get the local optimisation parameters
             [a, ~] = get_optimisation_params(features_matched(3:4,k), ...
                 frame_local(3:4), cor.H_to_ref{imgID});
+            
+            if opts.weighted
+                feature_weight = world.feature_weights(matched_loc_features(i));
+                a = feature_weight * a;
+            end
             
             % Incrementally calculate energy at each iteration
             E_after_true = E_after_true + double(norm(a))^2;
