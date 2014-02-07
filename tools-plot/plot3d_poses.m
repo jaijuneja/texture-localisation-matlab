@@ -1,10 +1,22 @@
 function plot3d_poses(model, cor, world, varargin)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
-% 08/12/2013
+% 30/01/2014
 % -------------------------------------------------------------------------
 % PLOT3D_POSES
+% plot3d_poses(model, cor, world, varargin)
 %
+% Plots the estimated 3D positions of cameras relative to the world frame.
+% Note that cor.H_to_world needs to be constructed using get_poses before
+% this function can be called.
+%
+% Inputs:
+%   - model
+%   - cor
+%   - world
+%
+%   Optional Properties:
+%       - TBD
 
 opts.showMosaic = false;
 opts.showFeatures = false;
@@ -16,6 +28,8 @@ opts.scaleFactor = 1;
 opts.queryCameras = [];
 opts.onlyDrawQueryCams = false;
 opts = vl_argparse(opts, varargin);
+
+ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_world));
 
 offset = [0; 0];
 if ~isequal(opts.scaleFactor, 1) && ~opts.showMosaic
@@ -54,7 +68,19 @@ elseif opts.showFeatures
     hold on
 end
 
-ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_world));
+% scales = zeros(1, length(ims_mappable));
+% for i = 1:length(ims_mappable)
+%     img = ims_mappable(i);
+%     H_wj = inv(cor.H_to_world{img});
+%     H_wj = H_wj / H_wj(3,3);
+%     gammaG = cor.intrinsics \ H_wj * cor.intrinsics;
+%     gamma = median(svd(gammaG));
+%     scales(i) = gamma;
+% end
+% meanscale = mean(scales);
+% stdscale = std(scales);
+% cor = transform_world(cor, meanscale);
+% opts.scaleFactor = meanscale;
 
 arrow_len = opts.arrowLength * opts.scaleFactor;
 arrowhead_size = 0.9 * opts.scaleFactor;
@@ -87,7 +113,7 @@ for i = 1:length(ims_mappable)
 
     H_wj = inv(cor.H_to_world{img});
     H_wj = H_wj / H_wj(3,3);
-
+    
     [R, t] = decompose_homog(H_wj, cor.intrinsics);
 
     c = draw_camera(R, t, w, camsize, imsize);

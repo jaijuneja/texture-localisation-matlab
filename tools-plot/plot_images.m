@@ -12,7 +12,7 @@ function plot_images(model, cor)
 % as their matching scores. A matched image  can then be clicked on to show
 % an interactive plot of feature-to-feature matches between the two images.
 % This allows the user to conveniently browse the correspondence structure
-% (input 'cor') and visualise the matches between images.
+% ('cor') and visualise the matches between images.
 %
 % Inputs:
 %   - model:    Index of images from visualindex. Type 'help
@@ -43,7 +43,7 @@ guidata(gcf, data);
 
 function zoomIntoImage(h, event, data)
 
-data = guidata(h) ;
+data = guidata(h);
 
 % Determine which image was selected and find its matches
 im_ndx = find(h == data.h) ;
