@@ -13,6 +13,8 @@ opts.globalFeatsOnly = false;
 opts.camSize = 0.1;
 opts.arrowLength = 0.2;
 opts.scaleFactor = 1;
+opts.queryCameras = [];
+opts.onlyDrawQueryCams = false;
 opts = vl_argparse(opts, varargin);
 
 offset = [0; 0];
@@ -72,63 +74,76 @@ ColOrd = get(gca,'ColorOrder');
 [m,~] = size(ColOrd);
 
 for i = 1:length(ims_mappable)
-    
     ColRow = rem(i,m);
     if ColRow == 0
       ColRow = m;
     end
     % Get the color
     Col = ColOrd(ColRow,:);
-    
+
     img = ims_mappable(i);
     im_info = imfinfo(model.index.names{img});
     imsize = [im_info.Width; im_info.Height];
-    
+
     H_wj = inv(cor.H_to_world{img});
     H_wj = H_wj / H_wj(3,3);
-    
-    r1r2t = cor.intrinsics \ H_wj;
 
-    r1 = r1r2t(:,1);
-    scale1 = norm(r1);
-    r2 = r1r2t(:,2);
-    scale2 = norm(r2);
-    % r2 = r2/norm(r2);
-    r3 = cross(r1, r2);
-    % r3 = r3/norm(r3);
-    % r1 = cross(r2, r3);
+    [R, t] = decompose_homog(H_wj, cor.intrinsics);
 
-    R = [r1 r2 r3];
-    % Improvement to commented out method above - see planar-struct3.pdf
-    [U, ~, V] = svd(R);
-    R = U * V';
-    
-    % Want to scale t so that it represents r1r2t as closely as possible
-    scalet = mean([scale1 scale2]);
-    % Alternative scaling
-    % scalet2 = norm(r1r2t(:,1:2))/norm(R(:,1:2));
-    t = r1r2t(:,3);
-    t = t/scalet;
-    
     c = draw_camera(R, t, w, camsize, imsize);
 
     vertices = transform_rect(cor.H_to_world{img}, imsize);
-    
+
     if opts.showMosaic
         % Offset plot to align with mosaic
         [vertices, c] = apply_offset(vertices, c, offset);
     end
-    
+
+    % Plot image frame projected onto world
     plot(vertices(1,:), vertices(2,:), 'LineWidth', 1.5, 'Color', Col);
-    
-    h = fill3(c.plotsquare(1,:),c.plotsquare(2,:),c.plotsquare(3,:), Col);
-    set(h,'FaceAlpha',0.5)
-    plot3(c.plotcam(1,:), c.plotcam(2,:), c.plotcam(3,:), 'black');
-    
-    quiver3(repmat(c.orig(1),3,1), repmat(c.orig(2),3,1), ...
-        repmat(c.orig(3),3,1), c.plotarrows(:,1), c.plotarrows(:,2), ...
-        c.plotarrows(:,3), 'Color', Col, 'LineWidth', 2, ...
-        'MaxHeadSize', arrowhead_size);
+
+    if ~opts.onlyDrawQueryCams
+        % Plot camera
+        h = fill3(c.plotsquare(1,:),c.plotsquare(2,:),c.plotsquare(3,:), Col);
+        set(h,'FaceAlpha',0.5)
+        plot3(c.plotcam(1,:), c.plotcam(2,:), c.plotcam(3,:), 'black');
+
+        quiver3(repmat(c.orig(1),3,1), repmat(c.orig(2),3,1), ...
+            repmat(c.orig(3),3,1), c.plotarrows(:,1), c.plotarrows(:,2), ...
+            c.plotarrows(:,3), 'Color', Col, 'LineWidth', 2, ...
+            'MaxHeadSize', arrowhead_size);
+    end
+end
+
+% If a set of query cameras are input under the option 'queryCameras' then
+% plot them
+if isstruct(opts.queryCameras)
+    for i = 1:length(opts.queryCameras.R)
+        qry_c = draw_camera(opts.queryCameras.R{i}, ...
+            opts.queryCameras.t{i}, w, camsize, opts.queryCameras.imsize);
+
+        qry_vertices = transform_rect(opts.queryCameras.H_to_world{i}, ...
+            opts.queryCameras.imsize);
+
+        if opts.showMosaic
+            % Offset plot to align with mosaic
+            [qry_vertices, qry_c] = apply_offset(qry_vertices, qry_c, offset);
+        end
+        
+        plot(qry_vertices(1,:), qry_vertices(2,:), 'LineWidth', 1.5, ...
+            'Color', 'black');
+
+        h = fill3(qry_c.plotsquare(1,:), qry_c.plotsquare(2,:), ...
+            qry_c.plotsquare(3,:), 'black');
+        set(h,'FaceAlpha',0.5)
+        plot3(qry_c.plotcam(1,:), qry_c.plotcam(2,:), qry_c.plotcam(3,:), ...
+            'black');
+
+        quiver3(repmat(qry_c.orig(1),3,1), repmat(qry_c.orig(2),3,1), ...
+            repmat(qry_c.orig(3),3,1), qry_c.plotarrows(:,1), ...
+            qry_c.plotarrows(:,2), qry_c.plotarrows(:,3), 'Color', 'black', ...
+            'LineWidth', 2, 'MaxHeadSize', arrowhead_size);
+    end
 end
 
 % Reverse y-axis so that plot is aligned with image mosaic
