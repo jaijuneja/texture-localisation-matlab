@@ -20,8 +20,8 @@ if isstruct(x)
         
     elseif isfield(x, 'features_global')
         % x is the world structure
-        x.features_global(3:4,:) = transform_points( ...
-            x.features_global(3:4,:), T);
+        x.features_global(3:end,:) = transform_frames( ...
+            x.features_global(3:end,:), T);
     end
 else
     % x is just a transformation matrix

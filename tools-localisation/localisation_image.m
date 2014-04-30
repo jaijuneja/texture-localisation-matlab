@@ -1,4 +1,4 @@
-function cams = localize_image(img, model, cor, world, varargin)
+function cams = localisation_image(model, world, cor, img, varargin)
 
 opts.percentThresh = 0.5;
 opts.numThresh = 20;
@@ -7,6 +7,8 @@ opts.maxMatches = inf;
 opts.plotPoses = true;
 opts.showMosaic = false;
 opts.scaleFactor = 1;
+opts.truePosition = [];
+opts.timeLocalisation = false;
 opts = vl_argparse(opts, varargin);
 
 fprintf('Initialising localisation... \n');
@@ -16,6 +18,7 @@ if ~isequal(opts.scaleFactor, 1)
 end
 
 % Set geometricVerification to false for coarse localisation approach
+tic
 [ids, scores, result] = visualindex_query(model, img, ...
     'geometricVerification', true);
 score_thresh = scores(1) * opts.percentThresh; % of best match score
@@ -55,10 +58,12 @@ numPoses = length(cams.R);
 pose_str = 'poses';
 if isequal(numPoses, 1), pose_str = 'pose'; end
 fprintf(['Image localised, ' num2str(numPoses) ' ' pose_str ' found. \n'])
-
+toc
 if opts.plotPoses
+    if ~isempty(opts.truePosition), overlap = true; else overlap = false; end
     plot3d_poses(model, cor, world, 'queryCameras', cams, ...
-        'onlyDrawQueryCams', true, 'showMosaic', opts.showMosaic)
+        'onlyDrawQueryCams', true, 'showMosaic', opts.showMosaic, ...
+        'truePosition', opts.truePosition, 'computeOverlap', overlap)
 end
 
 % Now we have coarse localisation of image. Use this to determine which

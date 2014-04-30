@@ -35,7 +35,7 @@ num_mappable_feats = sum(world.features_mappable);
 
 opts.plotStyle = 'raw';
 opts.numBins = round(sqrt(world.num_features));
-opts.numSamples = 1e5;
+opts.numSamples = 5e4;
 opts.xOffset = 0;
 opts.yOffset = 0;
 opts.scaleFactor = 1;

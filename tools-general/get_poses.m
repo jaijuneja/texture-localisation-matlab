@@ -47,7 +47,8 @@ drawnow;
 
 % Convert rectangle from mosaic co-ordinates to world co-ords (mosaic is in
 % positive co-ordinates only, whereas world includes negative values)
-offsets_bef = plot_transformations(model, cor, 'dontPlot', true);
+offsets_bef = plot_transformations(model, cor, 'dontPlot', true, ...
+    'fromframe', 'ref');
 x = x - offsets_bef(1);
 y = y - offsets_bef(2);
 

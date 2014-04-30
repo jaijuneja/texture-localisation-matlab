@@ -33,7 +33,7 @@ world.feature_map(:, end+1) = ...
     [fGlobalID; imgID; fLocalID];
 
 % Also update words in same way
-world.words_global(:, end+1) = ...
+world.words_local(:, end+1) = ...
     [fGlobalID; imgID; ...
     model.index.words{imgID}(fLocalID)];
 
@@ -42,13 +42,13 @@ if ~isempty(cor.H_to_world{imgID})
     global_frame = transform_frames(model.index.frames{imgID}(:,fLocalID), ...
         cor.H_to_world{imgID});
 else
-    global_frame(:, end+1) = nan(6,1);
+    global_frame = nan(6,1);
 end
 
 world.frames_local(:, end+1) = [  fGlobalID; imgID; ...
                                model.index.frames{imgID}(:,fLocalID) ];
                     
-feat_pos = global_frame(1:2);
+feat_pos = global_frame;
 
 % If the feature is new
 if isequal(fGlobalID, world.num_features+1)
@@ -56,8 +56,12 @@ if isequal(fGlobalID, world.num_features+1)
     world.num_features = world.num_features + 1;
     
     % Add the new global feature
-    world.features_global(:,end+1) = [fGlobalID; 1; feat_pos(1); feat_pos(2)];
+    world.features_global(:,end+1) = [fGlobalID; 1; feat_pos];
     world.feature_indices(1,end+1) = size(world.feature_map, 2);
+    
+    % Only update global words if feature is new
+    world.words_global(:, end+1) = [fGlobalID; ...
+        model.index.words{imgID}(fLocalID)];
     
     if isnan(feat_pos(1))
         % The feature's global co-ordinates are unknown - it cannot be mapped
@@ -78,9 +82,9 @@ else
     
     % If the previous position was unknown, we ONLY use the new info to
     % determine the global position
-    feat_pos_before = world.features_global(3:4,fGlobalID);
+    feat_pos_before = world.features_global(3:end,fGlobalID);
     if isnan(feat_pos_before(1)) && ~isnan(feat_pos(1))
-        world.features_global(3:4,fGlobalID) = feat_pos;
+        world.features_global(3:end,fGlobalID) = feat_pos;
         % The global feature is now mappable
         world.features_mappable(fGlobalID) = true;
         
@@ -90,7 +94,7 @@ else
         feat_pos_after = (feat_pos + numMatches * feat_pos_before) / ...
             (numMatches+1);
         % Update global feature position estimate
-        world.features_global(3:4,fGlobalID) = feat_pos_after;
+        world.features_global(3:end,fGlobalID) = feat_pos_after;
     end
     
     % Add latest index to the global feature

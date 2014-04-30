@@ -43,20 +43,38 @@ function plot_everything(model, world, cor, varargin)
 %                           zero, viewed from reference frame. If set to
 %                           'world', viewed in world frame. Set to 'world'
 %                           by default
-%       - scaleFactor       Apply scale factor to world plot
+%       - scaleFactor:      Apply scale factor to world plot
+%       - fromFrame:        Which reference frame to plot the world from.
+%                           Either the world frame 'w', or the ref frame
+%                           'ref'. World frame by default
 
 opts.matchesOnly = false;
 opts.globalFeatsOnly = false;
 opts.showFeatures = true;
+opts.featPlotStyle = 'raw';
 opts.showMosaic = true;
 opts.showImgBorders = true;
 opts.scaleFactor = 1;
+opts.fromFrame = 'w';
 opts = vl_argparse(opts, varargin);
 valLineColour = 'black';
 
+if ~isequal(opts.scaleFactor, 1)
+    cor = transform_world(cor, opts.scaleFactor);
+    if opts.showFeatures
+        world = transform_world(world, opts.scaleFactor);
+    end
+end
+    
+if strcmp(opts.fromFrame, 'w')
+    cor.H_to_ref = cor.H_to_world;
+elseif opts.showFeatures
+    world = transform_world(world, cor.H_world_toref);
+end
+    
 % Get offset parameters
 offsets = plot_transformations(model, cor, 'plotOnImage', true, ...
-    'dontPlot', true);
+    'dontPlot', true, 'fromFrame', opts.fromFrame);
 xOffset = offsets(1); yOffset = offsets(2);
 
 % Plot image mosaic
@@ -81,7 +99,7 @@ end
 % Plot image edges lines
 if opts.showImgBorders
     plot_transformations(model, cor, 'plotOnImage', true, ...
-        'LineColour', valLineColour);
+        'LineColour', valLineColour, 'fromFrame', opts.fromFrame);
 end
 
 % Turn of axis if plotting mosaic

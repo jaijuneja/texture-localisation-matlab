@@ -1,5 +1,11 @@
 function weights = get_feature_weights(world, cor, varargin)
-opts.window_size = 50;
+x_max = max(world.features_global(3, :));
+x_min = min(world.features_global(3, :));
+y_max = max(world.features_global(4, :));
+y_min = min(world.features_global(4, :));
+world_area = (x_max-x_min) * (y_max-y_min);
+% Can fit approximately 20 windows in the world
+opts.window_size = sqrt(world_area) * 0.05;
 
 matched_feats = find(world.features_global(2,:) > 1);
 feats_glob = world.features_global(3:4, matched_feats);

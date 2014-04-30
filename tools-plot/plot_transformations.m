@@ -1,4 +1,4 @@
-function offsets = plot_transformations(model, cor, varargin)
+function [offsets, dims] = plot_transformations(model, cor, varargin)
 % Jai Juneja, www.jaijuneja.com
 % University of Oxford
 % 08/12/2013
@@ -29,13 +29,12 @@ function offsets = plot_transformations(model, cor, varargin)
 %       - addDelay:     When set to true, adds a 1 second delay between
 %                       plotting each image
 %       - fromFrame:    Which reference frame to plot the world from.
-%                       Either an integer indicating the index of the image
-%                       (0 corresponds to reference image), or 'w' for the
-%                       world plane
+%                       Either the world frame 'w', or the ref frame 'ref'
 %
 % Outputs:
 %   - offset:   [xOffset; yOffset] values needed for superimposing the plot
 %               on an image (see plot_everything for an example)
+%   - dims:     [width; height] dimensions of the world
 
 opts.LineColour = 'black';
 opts.plotOnImage = false;
@@ -44,20 +43,28 @@ opts.addDelay = false;
 opts.fromFrame = 'w';
 opts = vl_argparse(opts, varargin);
 
-ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_world));
+ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_ref));
 vertices = cell(1,length(ims_mappable));
 
 for i = 1:length(ims_mappable)
     img = ims_mappable(i);
     im_info = imfinfo(model.index.names{img});
     imsize = [im_info.Width; im_info.Height];
-    vertices{i} = transform_rect(cor.H_to_world{img}, imsize);
+    if strcmp(opts.fromFrame, 'w')
+        vertices{i} = transform_rect(cor.H_to_world{img}, imsize);
+    else
+        vertices{i} = transform_rect(cor.H_to_ref{img}, imsize);
+    end
 end
 
 % Get offset values
 vertices_mat = cell2mat(vertices);
 xmin = min(vertices_mat(1,:));
 ymin = min(vertices_mat(2,:));
+xmax = max(vertices_mat(1,:));
+ymax = max(vertices_mat(2,:));
+
+dims = [xmax - xmin; ymax - ymin];
 
 if xmin > 0, xmin = 0; end
 if ymin > 0, ymin = 0; end
@@ -89,6 +96,7 @@ end
 % Reverse y-axis so that plot is aligned with image mosaic
 set(gca, 'YDir', 'reverse')
 axis equal, hold off
+
 
 % -----------------------------------------------
 function new_vertices = transform_rect(H, imsize)

@@ -70,7 +70,7 @@ function cor = build_correspondence(model, varargin)
 
 % Score threshold is a percentage of the maximum score AND greater than a
 % specified value (currently hardcoded and set to 20 below)
-opts.percentThresh = 0.5;
+opts.percentThresh = 0.4;
 opts.refImg = 1;
 opts.numThresh = 20;
 opts = vl_argparse(opts, varargin);
@@ -95,11 +95,26 @@ cor.H_world_toref = []; % Populate this using get_poses
 cor.H_to_world = []; % Populate this using get_poses
 cor.intrinsics = []; % Populate this using set_intrinsics
 
-
+fprintf('Build progress: 000%%')
 counter = 0;
 for i = model.index.ids
-    [ids, scores, result] = visualindex_query(model, i);
-    score_thresh = scores(2) * opts.percentThresh; % of best match score
+    counter = counter + 1;
+    [ids, scores, result] = visualindex_query(model, i, ...
+        'geometricVerification', true);
+    
+    % Remove empty items
+    nonempty = find(cellfun(@(x)(~isempty(x)), result.H));
+    result.H = result.H(nonempty);
+    result.ids = result.ids(nonempty);
+    scores = scores(nonempty);
+    result.matches = result.matches(nonempty);
+    ids = ids(nonempty);
+    
+    % If there are no matches then skip to next iteration
+    if length(scores) < 2, continue; end
+    
+    % Otherwise find the good matches
+    score_thresh = scores(2) * opts.percentThresh; % of best match score    
     goodmatch = find(scores > score_thresh & scores > opts.numThresh ...
         & ids ~= result.query);
     cor.id(i) = result.query;
@@ -110,9 +125,12 @@ for i = model.index.ids
     cor.adjacency(i, ids(goodmatch)) = 1;
     
     % Display percentage of build that is complete
-    counter = counter + 1;
     pc_complete = int64((counter / num_imgs) * 100);
-    fprintf([num2str(pc_complete) '%% of build complete \n'])
+    if pc_complete < 10, zer = '00'; 
+    elseif pc_complete < 100, zer = '0';
+    else zer = '';
+    end
+    fprintf(['\b\b\b\b' strcat(zer, num2str(pc_complete)) '%%'])
 end
 
 % Remove edges that are not bi-directional
@@ -126,7 +144,8 @@ for i = 1:length(im_ids)
     % Thus we zero out asymmetric terms
     cor.adjacency(im_ids(i), match_ids(i)) = 0;
 end
-    
+fprintf('\n')
+
 % Construct cell array of image names
 node_names = cell(1, numel(model.index.ids));
 node_names(:) = {'Image '};
@@ -140,5 +159,4 @@ cor.graph = biograph(tril(cor.adjacency), node_names, 'ShowArrows', 'off');
 
 % Set reference image and determine H_to_ref for all images
 cor = set_refimg(cor, opts.refImg);
-
 end

@@ -30,7 +30,7 @@ for i = 1:num_ims
     vl_tightsubplot(num_ims, i, 'Margin', 1e-2);
     im = imread(model.index.names{i});
     data.h(i) = imagesc(im); % Return image handle
-    title(['Image ' num2str(i)])
+%     title(['Image ' num2str(i)])
     set(data.h(i), 'ButtonDownFcn', @zoomIntoImage);
     set(gca, 'XTick', [], 'YTick', []);
     axis equal, axis tight

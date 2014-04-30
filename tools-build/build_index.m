@@ -52,7 +52,7 @@ not_img = [];
 % Populate cell array with paths to images
 for i = 1:length(image_files)
     if ~image_files(i).isdir && ...
-            sum(strcmp(image_files(i).name(end-3:end), opts.imgFormats))
+        sum(strcmp(image_files(i).name(end-3:end), opts.imgFormats))
         % If file is not a directory and ends with one of the extensions
         % listed in opts.imgFormats then add its path to images(i)
         images(i) = { strcat(path.images, image_files(i).name) };    

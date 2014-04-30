@@ -118,22 +118,22 @@ end
 
 mass = mass(:,:,1) | mass(:,:,2) | mass(:,:,3);
 % Remove black pixel padding
-pixels = (mass ~= 0);
-[row, col] = find(pixels);
-minrow = min(row);
-if ~isequal(minrow, 1)
-    image_map(1:minrow-1, :, :) = [];
-end
-mincol = min(col);
-if ~isequal(mincol, 1)
-    image_map(:, 1:mincol-1, :) = [];
-end
-maxrow = max(row) - minrow + 1;
-if ~isequal(maxrow, size(image_map, 1) - minrow + 1)
-    image_map(maxrow+1:end, :, :) = [];
-end
-maxcol = max(col);
-if ~isequal(maxcol, size(image_map, 2) - mincol + 1)
-    image_map(:, maxcol+1:end, :) = [];
-end
+% pixels = (mass ~= 0);
+% [row, col] = find(pixels);
+% minrow = min(row);
+% if ~isequal(minrow, 1)
+%     image_map(1:minrow-1, :, :) = [];
+% end
+% mincol = min(col);
+% if ~isequal(mincol, 1)
+%     image_map(:, 1:mincol-1, :) = [];
+% end
+% maxrow = max(row) - minrow + 1;
+% if ~isequal(maxrow, size(image_map, 1) - minrow + 1)
+%     image_map(maxrow+1:end, :, :) = [];
+% end
+% maxcol = max(col);
+% if ~isequal(maxcol, size(image_map, 2) - mincol + 1)
+%     image_map(:, maxcol+1:end, :) = [];
+% end
 end

@@ -17,11 +17,11 @@ function resize_images(imgFolder, varargin)
 %                   resized
 %
 %   Optional Properties:
-%       - 'maxDimension':   Sets maximum number of pixels along major axis
+%       - 'maxDimension':	Sets maximum number of pixels along major axis
 %                           of image. Set to 1024 by default
 %       - 'fileSuffix':     String to be added to the end of the original
 %                           file names
-%       - 'saveFolder': 	String containing the path to the folder where
+%       - 'saveFolder':     String containing the path to the folder where
 %                           images are to be saved. Set equal to imgFolder
 %                           to save in original folder or to overwrite
 %                           files. By default valSavePath = imgFolder +

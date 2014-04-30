@@ -5,7 +5,7 @@ opts.constrainScale = false;
 opts.onlyOptimiseH = false;
 opts.weighted = false;
 opts.dH_thresh = 0.1;
-opts.df_thresh = 0.01;
+opts.df_thresh = 0.1;
 opts = vl_argparse(opts, varargin);
 
 % Note: we only optimise features that have been matched between multiple
@@ -149,7 +149,9 @@ if opts.onlyOptimiseH
     delta_lower = [];
     num_feats_glob = 0;
     
-    Aeq_scale(:, feat_ndxs) = [];
+    if opts.constrainScale
+        Aeq_scale(:, feat_ndxs) = [];
+    end
 end
 
 options = optimoptions('quadprog');

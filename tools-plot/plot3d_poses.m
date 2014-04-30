@@ -27,9 +27,13 @@ opts.arrowLength = 0.2;
 opts.scaleFactor = 1;
 opts.queryCameras = [];
 opts.onlyDrawQueryCams = false;
+opts.truePosition = [];
+opts.computeOverlap = false;
 opts = vl_argparse(opts, varargin);
 
 ims_mappable = find(cellfun(@(x)(~isempty(x)), cor.H_to_world));
+
+truePos = opts.truePosition;
 
 offset = [0; 0];
 if ~isequal(opts.scaleFactor, 1) && ~opts.showMosaic
@@ -56,6 +60,18 @@ elseif opts.showMosaic
     hold on
 end
 
+if ~isempty(opts.truePosition)
+    if ~isequal(opts.scaleFactor, 1)
+        T_scale = [1 0 0; 0 1 0; 0 0 1/opts.scaleFactor];
+        truePos = transform_points(truePos, T_scale);
+    end
+    truePos(1,:) = truePos(1,:) + offset(1);
+    truePos(2,:) = truePos(2,:) + offset(1);
+    h = fill(truePos(1,:), truePos(2,:), 'black');
+    set(h, 'FaceAlpha', 0.5);
+    hold on
+end
+    
 % Plot features
 if opts.showFeatures && opts.matchesOnly
     plot_feature_matches(world, cor, 'globalFeatsOnly', opts.globalFeatsOnly, ...
@@ -169,6 +185,12 @@ if isstruct(opts.queryCameras)
             repmat(qry_c.orig(3),3,1), qry_c.plotarrows(:,1), ...
             qry_c.plotarrows(:,2), qry_c.plotarrows(:,3), 'Color', 'black', ...
             'LineWidth', 2, 'MaxHeadSize', arrowhead_size);
+        
+        if opts.computeOverlap
+            overlap = get_overlap(truePos, qry_vertices(:,1:end-1));
+            fprintf(['Query Img #' num2str(i) ' Overlap: ' ...
+                num2str(overlap) '\n']);
+        end
     end
 end
 

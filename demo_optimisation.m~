@@ -35,15 +35,15 @@ load('/Users/jai/Documents/MATLAB/4yp/test_images/loop_resized/etc/world_ba.mat'
 % Some basic cases first:
 % e.g. only move global features, only adjust H etc.
 %% Global feature bundle adjustment
-numIters = 10;
+numIters = 1;
 % world3 = world;
 % cor3 = cor;
 optimH_counter = 0;
-onlyoptimH = false;
+onlyoptimH = true;
 figure; plot_everything(index, world, cor, 'showMosaic', false, 'matchesOnly', true)
 for i = 1:numIters
     fprintf(['Iteration ' num2str(i) '\n'])
-    if isequal(mod(i, 4), 0)
+    if isequal(mod(i, 10), 0)
         onlyoptimH = true;
     elseif isequal(optimH_counter, 2)
         onlyoptimH = false;

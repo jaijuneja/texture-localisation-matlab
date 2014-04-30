@@ -4,8 +4,10 @@ r1r2t = K \ H;
 
 r1 = r1r2t(:,1);
 scale1 = norm(r1);
+% r1 = r1 / scale1;
 r2 = r1r2t(:,2);
 scale2 = norm(r2);
+% r2 = r2/scale2;
 % r2 = r2/norm(r2);
 r3 = cross(r1, r2);
 % r3 = r3/norm(r3);

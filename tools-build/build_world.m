@@ -23,10 +23,12 @@ function world = build_world(model, cor)
 %                       features, each of which is mapped to a global
 %                       feature in the form:
 %                       [global_feat_id; img_id; local_feat_id]
-%                   *   world.features_global is a 4xm matrix for m unique
+%                   *   world.features_global is a 8xm matrix for m unique
 %                       global features, containing estimates of each
 %                       feature's global position. It takes the form:
-%                       [global_feat_id; num_matched_feats; x_pos; y_pos]
+%                       [global_feat_id; num_matched_feats; x_pos; y_pos;
+%                       a11; a12; a21; a22]
+%                       Last 6 elements are a SIFT frame
 %                   *   world.feature_indices is a sparse matrix with m
 %                       columns (for m unique global features). Non-zero
 %                       elements in the mth column are the indices of local
@@ -48,6 +50,12 @@ function world = build_world(model, cor)
 % Initialise global map. Add all features in first image to map.
 % First image acts as the reference frame so we can populate feature info
 % from the first image
+
+if ~iscell(cor.H_to_world)
+    error(['Before the world feature map can be created, the ' ...
+        'transformation to the world plane must be obtained using get_poses']);
+end
+
 world.num_features = length(model.index.words{cor.ref_img});
 
 world.feature_map = [ 1:world.num_features
@@ -63,16 +71,20 @@ world.frames_local = [ 1:world.num_features
                     
 world.features_global = [ 1:world.num_features
                           ones(1,world.num_features)
-                          frames_glob(1:2,:) ];
+                          frames_glob ];
                       
 world.feature_indices = 1:world.num_features;
 
 world.feature_indices = sparse(world.feature_indices);
 
 % At the moment using visual words instead of SIFT descriptors
-world.words_global = [ 1:world.num_features
-                       repmat(cor.ref_img, 1,world.num_features)
-                       model.index.words{cor.ref_img}    ];
+world.words_local = [ 1:world.num_features
+                      repmat(cor.ref_img, 1,world.num_features)
+                      model.index.words{cor.ref_img}    ];
+
+world.words_global = ...
+    [ 1:world.num_features; ...
+    model.index.words{cor.ref_img} ];
                     
 world.features_mappable = true(1, world.num_features);
 
