@@ -111,9 +111,9 @@ parfor t = 1:depth
     matches{t} = matches{t}(:, inliers);
 end
 
-ambig_matches = mean(ambig_matches)-1;
+ambig_matches = mean(ambig_matches);
 fprintf(['On average ' num2str(ambig_matches) ...
-    ' ambiguous matches per feature during geometric verification. \n']);
+    ' matches per feature during geometric verification. \n']);
 
 % rerank
 [scores, perm] = sort(scores, 'descend') ;

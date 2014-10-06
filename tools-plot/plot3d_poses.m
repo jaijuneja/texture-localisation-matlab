@@ -131,7 +131,7 @@ for i = 1:length(ims_mappable)
     H_wj = H_wj / H_wj(3,3);
     
     [R, t] = decompose_homog(H_wj, cor.intrinsics);
-
+    
     c = draw_camera(R, t, w, camsize, imsize);
 
     vertices = transform_rect(cor.H_to_world{img}, imsize);
@@ -164,9 +164,16 @@ if isstruct(opts.queryCameras)
         qry_c = draw_camera(opts.queryCameras.R{i}, ...
             opts.queryCameras.t{i}, w, camsize, opts.queryCameras.imsize);
 
-        qry_vertices = transform_rect(opts.queryCameras.H_to_world{i}, ...
+        % If you want to use display the reprojected query image using the
+        % decomposed values of R and t rather than the homography extracted
+        % from geometric verification then uncomment below:
+        homog = cor.intrinsics * [opts.queryCameras.R{i}(:,1:2) opts.queryCameras.t{i}];
+        homog = inv(homog); homog = homog/homog(3,3);
+        qry_vertices = transform_rect(homog, ...
             opts.queryCameras.imsize);
-
+        
+%         qry_vertices = transform_rect(opts.queryCameras.H_to_world{i}, ...
+%             opts.queryCameras.imsize);
         if opts.showMosaic
             % Offset plot to align with mosaic
             [qry_vertices, qry_c] = apply_offset(qry_vertices, qry_c, offset);

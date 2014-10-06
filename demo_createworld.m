@@ -1,6 +1,6 @@
 %% Get paths to all images in database and generate index struct
 
-[index, images, path] = build_index('test_images/concrete_resized/', 'numWords', 5e4);
+[index, images, path] = build_index('test_images/example/', 'numWords', 2e3);
 
 %% Find correspondences between images
 
@@ -19,7 +19,7 @@ view(cor.graph);
 plot_images(index, cor);
 
 %% Change reference image
-cor = set_refimg(cor, 9);
+cor = set_refimg(cor, 24);
 save(path.cor, 'cor');
 %% Get global camera poses
 cor = get_poses(index, cor);
